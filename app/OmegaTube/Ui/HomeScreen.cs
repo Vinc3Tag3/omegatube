@@ -52,6 +52,8 @@ namespace OmegaTube.Ui
         private bool inRail;
         private bool dirty = true;
 
+        private string homeChipBrowseId = "";
+
         public HomeScreen(App app) : base(app)
         {
             Root.BackgroundColor = Theme.Background;
@@ -191,8 +193,8 @@ namespace OmegaTube.Ui
                 new Section
                 {
                     Key = "home", Title = T("Home"), Icon = "home", CacheKey = "home-shelves", Shelves = true, RefreshOnOpen = true,
-                    Loader = signedIn ? (Func<string, Task<FeedPage>>)(c => YouTube.Browse("FEwhat_to_watch", c)) : null,
-                    EmptyText = T("Sign in to your account (Account menu) to see your recommendations, or use Search and the menu sections."),
+                    Loader = LoadHome,
+                    EmptyText = T("Could not load home. Check your network and try again."),
                 },
                 new Section { Key = "search", Title = T("Search"), Icon = "search", Embed = () => new SearchScreen(App) },
                 new Section
@@ -225,6 +227,29 @@ namespace OmegaTube.Ui
             list.Add(new Section { Key = "account", Title = T("Account"), Icon = "set_account", Embed = () => new AccountScreen(App) });
             list.Add(new Section { Key = "settings", Title = T("Settings"), Icon = "settings", Embed = () => new SettingsScreen(App) });
             return list;
+        }
+
+        private async Task<FeedPage> LoadHome(string continuation)
+        {
+            FeedPage page = YouTube.SignedIn()
+                ? await YouTube.Browse("FEwhat_to_watch", continuation)
+                : await YouTube.HomeAnon(homeChipBrowseId, continuation);
+            if (!string.IsNullOrEmpty(page.Error) || !string.IsNullOrEmpty(continuation))
+            {
+                return page;
+            }
+            List<VideoItem> resume = LocalStore.ListResumeCandidates();
+            if (resume.Count > 0)
+            {
+                page.Shelves.Insert(0, new Shelf { Title = T("Resume watching"), Items = SessionHide.Filter(resume) });
+            }
+            for (int i = 0; i < page.Shelves.Count; i++)
+            {
+                Shelf shelf = page.Shelves[i];
+                shelf.Items = SessionHide.Filter(shelf.Items);
+                page.Shelves[i] = shelf;
+            }
+            return page;
         }
 
         // Returns false when the sections are unchanged (nothing rebuilt).
@@ -279,10 +304,9 @@ namespace OmegaTube.Ui
             int index = currentKey != null ? sections.FindIndex(s => s.Key == currentKey) : -1;
             if (index < 0)
             {
-                // Signed out, Home has nothing: start on the first feed section instead.
-                bool signedIn = sections[0].Loader != null;
-                index = signedIn ? 0 : sections.FindIndex(s => s.Loader != null);
-                index = Math.Max(0, index);
+                // Signed out: still open Home (anonymous browse); stay in rail until user enters content.
+                bool signedIn = YouTube.SignedIn();
+                index = 0;
                 inRail = !signedIn;
             }
             ShowSection(index);

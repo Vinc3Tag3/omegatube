@@ -370,6 +370,12 @@ nlohmann::json feed_json(const omega::yt::Feed& feed) {
             shelves.push_back({{"title", s.title}, {"items", items_json(s.items)}, {"continuation", s.continuation}});
         j["shelves"] = shelves;
     }
+    if (!feed.chips.empty()) {
+        nlohmann::json chips = nlohmann::json::array();
+        for (const auto& c : feed.chips)
+            chips.push_back({{"id", c.id}, {"label", c.label}, {"browseId", c.browse_id}});
+        j["chips"] = chips;
+    }
     return j;
 }
 
@@ -396,6 +402,15 @@ char* omega_yt_browse(const char* browse_id, const char* continuation) {
     omega::yt::Feed feed;
     if (!omega::yt::shared_client().browse(browse_id ? browse_id : "", continuation ? continuation : "", token, feed,
                                            error))
+        return to_c_json({{"error", error}});
+    return to_c_json(feed_json(feed));
+}
+
+char* omega_yt_home_anon(const char* browse_id, const char* continuation) {
+    omega::yt::Feed feed;
+    std::string error;
+    if (!omega::yt::shared_client().browse_web(browse_id ? browse_id : "", continuation ? continuation : "", feed,
+                                               error))
         return to_c_json({{"error", error}});
     return to_c_json(feed_json(feed));
 }

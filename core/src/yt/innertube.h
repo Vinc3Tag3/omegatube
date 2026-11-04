@@ -51,12 +51,17 @@ struct Shelf {
     std::string continuation;
 };
 
+struct HomeChip {
+    std::string id, label, browse_id;
+};
+
 struct Feed {
     std::vector<FeedItem> items;
     // FEsubscriptions: YouTube's picked shelf ("Les plus pertinentes") kept apart from the chronological feed.
     std::vector<FeedItem> highlights;
     // FEwhat_to_watch: the home's rows (items stays empty); continuation then gives more rows.
     std::vector<Shelf> shelves;
+    std::vector<HomeChip> chips;
     std::string continuation;  // empty when there is no next page
 };
 
@@ -133,6 +138,8 @@ public:
     // Signed-in feeds through the TV client: FEwhat_to_watch (home), FEsubscriptions, FEhistory.
     bool browse(const std::string& browse_id, const std::string& continuation, const std::string& access_token,
                 Feed& out, std::string& error);
+    // Public browse ids (WEB client, no account token): FEtrending, FEmusic, chip targets from remote-config.
+    bool browse_web(const std::string& browse_id, const std::string& continuation, Feed& out, std::string& error);
 
     // Why the last player() call was refused: playabilityStatus.status ("LOGIN_REQUIRED", "UNPLAYABLE",
     // "LIVE_STREAM_OFFLINE", ...) with YouTube's reason (in the request language), "HTTP_<code>" for a

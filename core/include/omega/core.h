@@ -105,6 +105,9 @@ OMEGA_API char* omega_yt_suggest(const char* query);
 // continuation, passed back with browse_id "" , returns more items of that row).
 // {"error":"signed out"} when no account is connected.
 OMEGA_API char* omega_yt_browse(const char* browse_id, const char* continuation);
+// Signed-out home / chip browse (WEB client, no token): shelves JSON like FEwhat_to_watch; browse_id "" uses
+// remote-config home.signedOutBrowseId (default FEtrending).
+OMEGA_API char* omega_yt_home_anon(const char* browse_id, const char* continuation);
 // Items: also "playlistId" and "kind" ("video" | "playlist" | "mix": a playlist card plays "id" within it).
 // The (up to 25) videos after video_id in playlist_id (playlist or mix): same JSON as search plus "title".
 OMEGA_API char* omega_yt_playlist(const char* video_id, const char* playlist_id);
