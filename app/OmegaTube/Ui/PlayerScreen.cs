@@ -856,7 +856,7 @@ namespace OmegaTube.Ui
         {
             if (player != IntPtr.Zero && stats.DurationMs > 0)
             {
-                LocalStore.SavePosition(item.Id, stats.Eos != 0 ? stats.DurationMs : stats.PositionMs, stats.DurationMs);
+                LocalStore.SavePosition(item.Id, stats.Eos != 0 ? stats.DurationMs : stats.PositionMs, stats.DurationMs, item);
             }
         }
 
@@ -909,7 +909,7 @@ namespace OmegaTube.Ui
                 if (stats.State == 3 && (now - lastSave).TotalSeconds > 10)
                 {
                     lastSave = now;
-                    LocalStore.SavePosition(item.Id, stats.PositionMs, stats.DurationMs);
+                    LocalStore.SavePosition(item.Id, stats.PositionMs, stats.DurationMs, item);
                 }
             }
             if (pendingSeekMs >= 0 && (now - pendingSeekAt).TotalMilliseconds > 600)

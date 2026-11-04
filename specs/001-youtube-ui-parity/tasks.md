@@ -39,14 +39,14 @@ description: "Task list for YouTube UI parity feature"
 
 **Purpose**: Champs de carte partagés, stockage local étendu, masquage session, focus thème. **Aucune user story avant la fin de cette phase.**
 
-- [ ] T004 Implémenter les self-checks réels dans `core/tools/ytcheck.cpp` (`--selfcheck`) : encodage protobuf filtres, regex temps `h:mm:ss`/`m:ss`, règle Reprendre identique à [data-model.md](data-model.md)
-- [ ] T005 Étendre `omega::yt::FeedItem` dans `core/src/yt/innertube.h` (`channel_avatar`, `verified`, `badge`, `item_count`, `feedback` tokens optionnels) et sérialiser ces champs dans le JSON renvoyé par le cœur (`core/src/core.cpp`)
-- [ ] T006 [P] Parser avatar, badge vérifié/nouveau/première/direct, `itemCount` playlist/mix et jetons `feedback` dans `parse_video_renderer`, `parse_lockup`, `parse_tile` dans `core/src/yt/innertube.cpp`
-- [ ] T007 [P] Étendre `VideoItem` et `YouTube.ToItems` dans `app/OmegaTube/Data/YouTube.cs` pour lire les nouveaux champs JSON ; étendre `LocalStore.ItemsJson` / cache flux dans `app/OmegaTube/Data/LocalStore.cs` pour persister avatar, badge, `itemCount`, `watched`
-- [ ] T008 Enrichir `LocalStore.SavePosition` dans `app/OmegaTube/Data/LocalStore.cs` avec `title`, `channel`, `thumbnail`, `channelAvatar` (quand connus) ; exposer `LocalStore.ListResumeCandidates()` triés par `at` décroissant avec règle d’éligibilité Reprendre
-- [ ] T009 Créer `app/OmegaTube/Data/SessionHide.cs` : ensembles en mémoire vidéos « Pas intéressé » et chaînes « Ne plus recommander », effacés au redémarrage ; méthode `Filter(IEnumerable<VideoItem>)` pour les listes
-- [ ] T010 [P] Ajouter constantes contour focus (couleur, épaisseur) dans `app/OmegaTube/Ui/Theme.cs` ; retirer l’inversion gris clair du bloc info carte comme style de sélection principal
-- [ ] T011 [P] Refactoriser `app/OmegaTube/Ui/Card.cs` : appliquer contour sur `thumb` au focus ; conserver texte clair sur fond sombre ; titre max deux lignes (`MultiLine` + hauteur) sans recouvrir durée ni barre progression
+- [x] T004 Implémenter les self-checks réels dans `core/tools/ytcheck.cpp` (`--selfcheck`) : encodage protobuf filtres, regex temps `h:mm:ss`/`m:ss`, règle Reprendre identique à [data-model.md](data-model.md)
+- [x] T005 Étendre `omega::yt::FeedItem` dans `core/src/yt/innertube.h` (`channel_avatar`, `verified`, `badge`, `item_count`, `feedback` tokens optionnels) et sérialiser ces champs dans le JSON renvoyé par le cœur (`core/src/core.cpp`)
+- [x] T006 [P] Parser avatar, badge vérifié/nouveau/première/direct, `itemCount` playlist/mix et jetons `feedback` dans `parse_video_renderer`, `parse_lockup`, `parse_tile` dans `core/src/yt/innertube.cpp`
+- [x] T007 [P] Étendre `VideoItem` et `YouTube.ToItems` dans `app/OmegaTube/Data/YouTube.cs` pour lire les nouveaux champs JSON ; étendre `LocalStore.ItemsJson` / cache flux dans `app/OmegaTube/Data/LocalStore.cs` pour persister avatar, badge, `itemCount`, `watched`
+- [x] T008 Enrichir `LocalStore.SavePosition` dans `app/OmegaTube/Data/LocalStore.cs` avec `title`, `channel`, `thumbnail`, `channelAvatar` (quand connus) ; exposer `LocalStore.ListResumeCandidates()` triés par `at` décroissant avec règle d’éligibilité Reprendre
+- [x] T009 Créer `app/OmegaTube/Data/SessionHide.cs` : ensembles en mémoire vidéos « Pas intéressé » et chaînes « Ne plus recommander », effacés au redémarrage ; méthode `Filter(IEnumerable<VideoItem>)` pour les listes
+- [x] T010 [P] Ajouter constantes contour focus (couleur, épaisseur) dans `app/OmegaTube/Ui/Theme.cs` ; retirer l’inversion gris clair du bloc info carte comme style de sélection principal
+- [x] T011 [P] Refactoriser `app/OmegaTube/Ui/Card.cs` : appliquer contour sur `thumb` au focus ; conserver texte clair sur fond sombre ; titre max deux lignes (`MultiLine` + hauteur) sans recouvrir durée ni barre progression
 
 **Checkpoint**: `ytcheck --selfcheck` vert ; cartes peuvent afficher les nouveaux champs dès qu’une liste les fournit.
 

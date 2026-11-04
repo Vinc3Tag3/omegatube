@@ -60,6 +60,7 @@ namespace OmegaTube.Data
                     ["id"] = v.Id, ["title"] = v.Title, ["channel"] = v.Channel, ["duration"] = v.Duration,
                     ["views"] = v.Views, ["published"] = v.Published, ["thumbnail"] = v.Thumbnail, ["live"] = v.Live,
                     ["watched"] = v.WatchedPercent, ["playlistId"] = v.PlaylistId, ["kind"] = v.Kind,
+                    ["channelAvatar"] = v.ChannelAvatar, ["verified"] = v.Verified, ["badge"] = v.Badge, ["itemCount"] = v.ItemCount,
                 });
             }
             return items;
@@ -92,20 +93,38 @@ namespace OmegaTube.Data
             return (long)Json.Num(e, "pos");
         }
 
-        public static void SavePosition(string videoId, long posMs, long durMs)
+        public static void SavePosition(string videoId, long posMs, long durMs, VideoItem display = null)
         {
             if (positions == null || string.IsNullOrEmpty(videoId) || durMs <= 0)
             {
                 return;
             }
-            // Nearly finished (or barely started) counts as "start from the beginning" next time,
-            // but finished videos keep a full bar.
-            positions[videoId] = new Dictionary<string, object>
+            var entry = new Dictionary<string, object>
             {
                 ["pos"] = (double)(posMs > durMs - 30000 ? durMs : posMs),
                 ["dur"] = (double)durMs,
                 ["at"] = (double)DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             };
+            if (display != null)
+            {
+                if (!string.IsNullOrEmpty(display.Title))
+                {
+                    entry["title"] = display.Title;
+                }
+                if (!string.IsNullOrEmpty(display.Channel))
+                {
+                    entry["channel"] = display.Channel;
+                }
+                if (!string.IsNullOrEmpty(display.Thumbnail))
+                {
+                    entry["thumbnail"] = display.Thumbnail;
+                }
+                if (!string.IsNullOrEmpty(display.ChannelAvatar))
+                {
+                    entry["channelAvatar"] = display.ChannelAvatar;
+                }
+            }
+            positions[videoId] = entry;
             if (positions.Count > MaxPositions)
             {
                 string oldest = null;
@@ -122,6 +141,46 @@ namespace OmegaTube.Data
                 positions.Remove(oldest);
             }
             WriteJson("positions.json", positions);
+        }
+
+        // Videos eligible for the Resume shelf (>10s watched, >30s left), newest local watch first.
+        public static List<VideoItem> ListResumeCandidates()
+        {
+            var list = new List<VideoItem>();
+            if (positions == null)
+            {
+                return list;
+            }
+            foreach (KeyValuePair<string, object> kv in positions)
+            {
+                long pos = (long)Json.Num(kv.Value, "pos");
+                long dur = (long)Json.Num(kv.Value, "dur");
+                if (dur <= 0 || pos <= 10000 || pos >= dur - 30000)
+                {
+                    continue;
+                }
+                string title = Json.Str(kv.Value, "title");
+                if (string.IsNullOrEmpty(title))
+                {
+                    continue;
+                }
+                list.Add(new VideoItem
+                {
+                    Id = kv.Key,
+                    Title = title,
+                    Channel = Json.Str(kv.Value, "channel"),
+                    Thumbnail = Json.Str(kv.Value, "thumbnail"),
+                    ChannelAvatar = Json.Str(kv.Value, "channelAvatar"),
+                    WatchedPercent = (int)Math.Min(100, pos * 100 / dur),
+                });
+            }
+            list.Sort((a, b) =>
+            {
+                double atA = Json.Num(positions[a.Id], "at");
+                double atB = Json.Num(positions[b.Id], "at");
+                return atB.CompareTo(atA);
+            });
+            return list;
         }
 
         private static object ReadJson(string name)

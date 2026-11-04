@@ -9,6 +9,10 @@ namespace OmegaTube.Data
     public class VideoItem
     {
         public string Id, Title, Channel, Duration, Views, Published, Thumbnail;
+        public string ChannelAvatar = "";
+        public string Badge = "";
+        public bool Verified;
+        public int ItemCount;
         public bool Live;
         public int WatchedPercent;   // account progress reported by YouTube (0 when unknown)
         // Playlist / mix card: plays Id within PlaylistId. Videos of a playlist keep Kind "video" + PlaylistId.
@@ -201,6 +205,10 @@ namespace OmegaTube.Data
                     Published = Json.Str(o, "published"),
                     Thumbnail = Json.Str(o, "thumbnail"),
                     Live = Json.Bool(o, "live"),
+                    ChannelAvatar = Json.Str(o, "channelAvatar"),
+                    Badge = Json.Str(o, "badge"),
+                    Verified = Json.Bool(o, "verified"),
+                    ItemCount = (int)Json.Num(o, "itemCount"),
                     WatchedPercent = (int)Json.Num(o, "watched"),
                     PlaylistId = Json.Str(o, "playlistId"),
                     Kind = Json.Str(o, "kind", "video"),

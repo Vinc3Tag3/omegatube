@@ -36,6 +36,8 @@ namespace OmegaTube.Ui
         public const int CardRadius = 8;
         public const float FocusScale = 1.1f;
         public const int FocusMargin = 30;         // room for the focused card's scale-up
+        public const int FocusRingWidth = 4;
+        public static readonly Color FocusRing = Rgb(0xf1f1f1);
         public const int RowHeight = 470;
         public const int PanelRadius = 20;
 
