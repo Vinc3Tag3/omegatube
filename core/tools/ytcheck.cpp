@@ -12,6 +12,7 @@
 //   ytcheck <videoId> [MB]       resolves formats via InnerTube and downloads the whole audio stream and
 //                                the first MB megabytes (default 100) of the 1080p H.264 stream via ranges.
 //                                Env AUDIO=<track id or language> picks the audio language.
+//   ytcheck --selfcheck            pure helpers (resume, description times, search filters)
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -28,6 +29,7 @@
 #include "yt/sponsorblock.h"
 #include "yt/innertube.h"
 #include "yt/js_solver.h"
+#include "yt/selfcheck.h"
 
 using Clock = std::chrono::steady_clock;
 
@@ -50,6 +52,15 @@ static bool drain(const char* label, const omega::yt::Format& f, const omega::ne
 
 int main(int argc, char** argv) {
     omega::cfg::init("");  // built-in remote-config.json defaults
+    if (argc >= 2 && strcmp(argv[1], "--selfcheck") == 0) {
+        std::string error;
+        if (!omega::yt::run_selfcheck(error)) {
+            printf("selfcheck failed: %s\n", error.c_str());
+            return 1;
+        }
+        printf("selfcheck OK\n");
+        return 0;
+    }
     if (argc >= 3 && strcmp(argv[1], "--get") == 0) {
         omega::net::Request req;
         req.url = argv[2];

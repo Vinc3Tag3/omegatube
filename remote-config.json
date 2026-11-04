@@ -1,6 +1,33 @@
 {
   "_comment": "Fetched by the app at startup from the main branch; also embedded at build time as the offline default. Edit it to adapt to YouTube changes without shipping a new build.",
   "version": 1,
+  "home": {
+    "signedOutBrowseId": "FEtrending"
+  },
+  "homeChips": [
+    { "id": "all", "label": "All", "browseId": "" },
+    { "id": "music", "label": "Music", "browseId": "FEmusic" },
+    { "id": "live", "label": "Live", "browseId": "FElive" },
+    { "id": "gaming", "label": "Gaming", "browseId": "FEgaming" },
+    { "id": "news", "label": "News", "browseId": "FEnews" },
+    { "id": "sports", "label": "Sports", "browseId": "FEsports" }
+  ],
+  "explore": [
+    { "id": "trending", "label": "Trending", "browseId": "FEtrending" },
+    { "id": "music", "label": "Music", "browseId": "FEmusic" },
+    { "id": "gaming", "label": "Gaming", "browseId": "FEgaming" },
+    { "id": "news", "label": "News", "browseId": "FEnews" },
+    { "id": "sports", "label": "Sports", "browseId": "FEsports" },
+    { "id": "learning", "label": "Learning", "browseId": "FElearning" },
+    { "id": "podcasts", "label": "Podcasts", "browseId": "FEpodcasts" }
+  ],
+  "channelTabs": {
+    "videos": "EgZ2aWRlb3PyBgQKAjoA",
+    "videosPopular": "EgZ2aWRlb3PyBgQKAjoA",
+    "live": "",
+    "playlists": "",
+    "about": ""
+  },
   "innertube": {
     "player": {
       "_comment": "Pre-playerClients builds only (kept for installed versions reading this file from main).",
