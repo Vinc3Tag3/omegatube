@@ -12,5 +12,7 @@ namespace OmegaTube.Ui
         void RefreshProgress();
         void Refresh();
         void Wake();   // shown again: resume filling its cards
+        bool LoadFailed { get; }
+        void RetryLoad();
     }
 }

@@ -20,6 +20,7 @@ namespace OmegaTube.Ui
         private readonly View info, infoTopPatch;
         private readonly View progress;
         private readonly View focusRing;
+        private ImageView avatar;
         private TextLabel title, meta;
         private bool focused;
         private Animation zoom;
@@ -68,6 +69,12 @@ namespace OmegaTube.Ui
             UpdateProgress();
         }
 
+        // Grey frame only (no Fill): loading placeholder.
+        public static Card Placeholder(int width = Theme.CardWidth)
+        {
+            return new Card(new VideoItem(), width);
+        }
+
         // Texts, duration badge and thumbnail. Text labels are what costs (shaping on the UI thread).
         public void Fill()
         {
@@ -76,6 +83,22 @@ namespace OmegaTube.Ui
                 return;
             }
             Filled = true;
+            bool hasAvatar = !string.IsNullOrEmpty(Item.ChannelAvatar);
+            int textX = hasAvatar ? 56 : 12;
+            int textW = width - textX - 12;
+            if (hasAvatar)
+            {
+                avatar = new ImageView
+                {
+                    Size = new Size(40, 40),
+                    Position = new Position(8, 10),
+                    BackgroundColor = Theme.SurfaceHigh,
+                };
+                Widgets.Round(avatar, 20);
+                avatar.ResourceUrl = Item.ChannelAvatar;
+                info.Add(avatar);
+            }
+
             string badge = BadgeText(Item);
             if (!string.IsNullOrEmpty(badge))
             {
@@ -89,13 +112,13 @@ namespace OmegaTube.Ui
                 thumb.Add(duration);
             }
 
-            title = Widgets.Label(Item.Title, Theme.BodySize, Theme.Text, width - 24, 62);
+            title = Widgets.Label(Item.Title, Theme.BodySize, Theme.Text, textW, 62);
             title.MultiLine = true;
-            title.Position = new Position(12, 8);
+            title.Position = new Position(textX, 8);
             info.Add(title);
 
-            meta = Widgets.Label(MetaLine(Item), Theme.SmallSize, Theme.TextDim, width - 24);
-            meta.Position = new Position(12, 70);
+            meta = Widgets.Label(MetaLine(Item), Theme.SmallSize, Theme.TextDim, textW);
+            meta.Position = new Position(textX, 70);
             info.Add(meta);
             ApplyFocusColors();
 
