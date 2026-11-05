@@ -124,15 +124,15 @@ description: "Task list for YouTube UI parity feature"
 
 ### Implementation for User Story 4
 
-- [ ] T037 [US4] Implémenter `omega_yt_account_action` dans `core/include/omega/core.h`, `core/src/core.cpp`, `core/src/yt/innertube.cpp` (`addToPlaylist`, `createPlaylist`, `feedback`, `notification`) selon [contracts/shell-json.md](contracts/shell-json.md)
-- [ ] T038 [US4] Parser `groups[]` et `commands` pause/clear pour `FEhistory` dans `core/src/yt/innertube.cpp` ; conserver `items` plat pour cache
-- [ ] T039 [P] [US4] P/Invoke et wrappers `YouTube.AccountAction`, `YouTube.HistoryGroups` dans `app/OmegaTube/NativeCore.cs` et `app/OmegaTube/Data/YouTube.cs`
-- [ ] T040 [US4] Créer `app/OmegaTube/Ui/YouScreen.cs` : entrées Historique, À regarder plus tard (`WL`), Vidéos aimées (`LL`), Playlists (`FElibrary`) ; intégrer au rail via `app/OmegaTube/Ui/HomeScreen.cs`
-- [ ] T041 [US4] Vue historique groupée + recherche interne + retirer une entrée + pause + effacement confirmé dans `app/OmegaTube/Ui/FeedGrid.cs` ou composant dédié sous `app/OmegaTube/Ui/`
-- [ ] T042 [US4] Abonnements : bande avatars (chaînes guide, voir US5 T046 si guide pas prêt — stub liste vide) + flux chronologique `FEsubscriptions` `items` + filtres Tout / Non vues / En direct dans `app/OmegaTube/Ui/HomeScreen.cs` / `FeedGrid.cs`
-- [ ] T043 [US4] Menu carte (maintien touche) : WL, enregistrer playlist, Pas intéressé, Ne plus recommander, file ; appliquer `SessionHide` + appels compte dans `app/OmegaTube/Ui/FeedGrid.cs` ; sans compte = message connexion, pas de succès fictif
-- [ ] T044 [P] [US4] Libellés bibliothèque, historique, menu carte dans `app/OmegaTube/I18n.cs`
-- [ ] T045 [US4] Étendre `ytcheck` : `--playlist-page WL`, `--playlist-page LL` après `--signin` dans `core/tools/ytcheck.cpp`
+- [x] T037 [US4] Implémenter `omega_yt_account_action` dans `core/include/omega/core.h`, `core/src/core.cpp`, `core/src/yt/innertube.cpp` (`addToPlaylist`, `createPlaylist`, `feedback`, `notification`) selon [contracts/shell-json.md](contracts/shell-json.md)
+- [x] T038 [US4] Parser `groups[]` et `commands` pause/clear pour `FEhistory` dans `core/src/yt/innertube.cpp` ; conserver `items` plat pour cache
+- [x] T039 [P] [US4] P/Invoke et wrappers `YouTube.AccountAction`, `YouTube.HistoryGroups` dans `app/OmegaTube/NativeCore.cs` et `app/OmegaTube/Data/YouTube.cs`
+- [x] T040 [US4] Créer `app/OmegaTube/Ui/YouScreen.cs` : entrées Historique, À regarder plus tard (`WL`), Vidéos aimées (`LL`), Playlists (`FElibrary`) ; intégrer au rail via `app/OmegaTube/Ui/HomeScreen.cs`
+- [x] T041 [US4] Vue historique groupée + recherche interne + retirer une entrée + pause + effacement confirmé dans `app/OmegaTube/Ui/FeedGrid.cs` ou composant dédié sous `app/OmegaTube/Ui/`
+- [x] T042 [US4] Abonnements : bande avatars (chaînes guide, voir US5 T046 si guide pas prêt — stub liste vide) + flux chronologique `FEsubscriptions` `items` + filtres Tout / Non vues / En direct dans `app/OmegaTube/Ui/HomeScreen.cs` / `FeedGrid.cs`
+- [x] T043 [US4] Menu carte (maintien touche) : WL, enregistrer playlist, Pas intéressé, Ne plus recommander, file ; appliquer `SessionHide` + appels compte dans `app/OmegaTube/Ui/FeedGrid.cs` ; sans compte = message connexion, pas de succès fictif
+- [x] T044 [P] [US4] Libellés bibliothèque, historique, menu carte dans `app/OmegaTube/I18n.cs`
+- [x] T045 [US4] Étendre `ytcheck` : `--playlist-page WL`, `--playlist-page LL` après `--signin` dans `core/tools/ytcheck.cpp`
 
 **Checkpoint**: Parcours compte bibliothèque + menu carte.
 

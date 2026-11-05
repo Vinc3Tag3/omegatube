@@ -47,6 +47,13 @@ namespace OmegaTube.Ui
         private readonly Func<bool> pump;
         private bool loadFailed;
         private readonly List<Card> skeletonCards = new List<Card>();
+        private View cardMenu;
+        private readonly List<TextLabel> cardMenuRows = new List<TextLabel>();
+        private int cardMenuIndex;
+        private bool cardMenuOpen;
+        private VideoItem cardMenuItem;
+        private string lastReturnId = "";
+        private int lastReturnTick;
 
         public bool LoadFailed => loadFailed;
 
@@ -575,6 +582,182 @@ namespace OmegaTube.Ui
                 }
             }
             return false;
+        }
+
+        public bool OnReturnPress()
+        {
+            if (cardMenuOpen)
+            {
+                return true;
+            }
+            VideoItem item = FocusedItem;
+            if (item == null)
+            {
+                return false;
+            }
+            int now = Environment.TickCount;
+            if (item.Id == lastReturnId && now - lastReturnTick < 700)
+            {
+                OpenCardMenu(item);
+                return true;
+            }
+            lastReturnId = item.Id ?? "";
+            lastReturnTick = now;
+            return false;
+        }
+
+        public bool CardMenuKey(string key)
+        {
+            if (!cardMenuOpen)
+            {
+                return false;
+            }
+            if (key == "Up")
+            {
+                cardMenuIndex = Math.Max(0, cardMenuIndex - 1);
+            }
+            else if (key == "Down")
+            {
+                cardMenuIndex = Math.Min(cardMenuRows.Count - 1, cardMenuIndex + 1);
+            }
+            else if (key == "XF86Back" || key == "Escape")
+            {
+                CloseCardMenu();
+                return true;
+            }
+            else if (key == "Return")
+            {
+                RunCardMenuAction(cardMenuIndex);
+                CloseCardMenu();
+                return true;
+            }
+            else
+            {
+                return true;
+            }
+            UpdateCardMenuFocus();
+            return true;
+        }
+
+        private void EnsureCardMenu()
+        {
+            if (cardMenu != null)
+            {
+                return;
+            }
+            cardMenu = Widgets.Box(Theme.Panel, 520, 420);
+            cardMenu.Hide();
+            Add(cardMenu);
+        }
+
+        private void OpenCardMenu(VideoItem item)
+        {
+            EnsureCardMenu();
+            cardMenuItem = item;
+            cardMenuOpen = true;
+            foreach (TextLabel row in cardMenuRows)
+            {
+                cardMenu.Remove(row);
+                row.Dispose();
+            }
+            cardMenuRows.Clear();
+            string[] labels = { T("Watch later"), T("Not interested"), T("Don't recommend channel"), T("Add to queue") };
+            for (int i = 0; i < labels.Length; i++)
+            {
+                var row = Widgets.Label("  " + labels[i] + "  ", Theme.BodySize + 2, Theme.Text, 480, 72);
+                row.Position = new Position(20, 20 + i * 78);
+                row.VerticalAlignment = VerticalAlignment.Center;
+                cardMenu.Add(row);
+                cardMenuRows.Add(row);
+            }
+            cardMenuIndex = 0;
+            cardMenu.Position = new Position(Pad + (focus % Columns) * (cardW + GapX), Pad + (focus / Columns) * rowStep);
+            cardMenu.Show();
+            UpdateCardMenuFocus();
+        }
+
+        private void CloseCardMenu()
+        {
+            cardMenuOpen = false;
+            cardMenu?.Hide();
+        }
+
+        private void UpdateCardMenuFocus()
+        {
+            for (int i = 0; i < cardMenuRows.Count; i++)
+            {
+                cardMenuRows[i].BackgroundColor = i == cardMenuIndex ? Theme.Accent : Theme.Surface;
+            }
+        }
+
+        private void RunCardMenuAction(int action)
+        {
+            VideoItem item = cardMenuItem;
+            if (item == null)
+            {
+                return;
+            }
+            if (action == 0)
+            {
+                if (!YouTube.SignedIn())
+                {
+                    status.Text = T("Sign in from the Account screen, then try again.");
+                    return;
+                }
+                UiGuard.Fire("FeedGrid.WatchLater", async () =>
+                {
+                    string err = await YouTube.AddToWatchLater(item.Id);
+                    status.Text = err == null ? T("Added to Watch later") : T("Failed: {0}", err);
+                });
+                return;
+            }
+            if (action == 1)
+            {
+                SessionHide.HideVideo(item.Id);
+                if (YouTube.SignedIn() && !string.IsNullOrEmpty(item.FeedbackNotInterested))
+                {
+                    UiGuard.Fire("FeedGrid.NotInterested", () => YouTube.AccountAction(Util.Json.Write(new Dictionary<string, object>
+                    {
+                        ["action"] = "feedback",
+                        ["token"] = item.FeedbackNotInterested,
+                    })));
+                }
+                RemoveFocusedItem();
+                return;
+            }
+            if (action == 2)
+            {
+                SessionHide.HideChannel(item.Channel);
+                if (YouTube.SignedIn() && !string.IsNullOrEmpty(item.FeedbackDontRecommend))
+                {
+                    UiGuard.Fire("FeedGrid.DontRecommend", () => YouTube.AccountAction(Util.Json.Write(new Dictionary<string, object>
+                    {
+                        ["action"] = "feedback",
+                        ["token"] = item.FeedbackDontRecommend,
+                    })));
+                }
+                RemoveFocusedItem();
+                return;
+            }
+            if (action == 3)
+            {
+                SessionQueue.Add(item);
+                status.Text = T("Added to queue");
+            }
+        }
+
+        private void RemoveFocusedItem()
+        {
+            if (items.Count == 0)
+            {
+                return;
+            }
+            items.RemoveAt(focus);
+            if (focus >= items.Count)
+            {
+                focus = Math.Max(0, items.Count - 1);
+            }
+            AfterChange();
         }
     }
 }

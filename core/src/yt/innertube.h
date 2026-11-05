@@ -42,6 +42,12 @@ struct FeedItem {
     int item_count = 0;
     bool is_live = false;
     int watched_percent = 0;
+    std::string fb_not_interested, fb_dont_recommend, fb_remove_history;
+};
+
+struct HistoryGroup {
+    std::string title;
+    std::vector<FeedItem> items;
 };
 
 // A titled row of the TV home ("Recommandations", "Jeux vidéo"...); continuation = more items of that row.
@@ -62,6 +68,8 @@ struct Feed {
     // FEwhat_to_watch: the home's rows (items stays empty); continuation then gives more rows.
     std::vector<Shelf> shelves;
     std::vector<HomeChip> chips;
+    std::vector<HistoryGroup> groups;
+    std::string history_pause_token, history_clear_token;
     std::string continuation;  // empty when there is no next page
 };
 
@@ -184,6 +192,10 @@ bool fetch_captions(const std::string& url, const std::string& translate_to, std
 bool rate_video(const std::string& video_id, const std::string& rating, const std::string& access_token,
                 std::string& error);
 bool set_subscribed(const std::string& channel_id, bool subscribe, const std::string& access_token, std::string& error);
+
+// Signed-in mutations (JSON request per contracts/shell-json.md). out may gain playlistId on create.
+bool account_action(const nlohmann::json& req, const std::string& access_token, nlohmann::json& out,
+                    std::string& error);
 
 // Return YouTube Dislike estimates (returnyoutubedislikeapi.com): likes, dislikes; -1 when unknown.
 bool vote_counts(const std::string& video_id, int64_t& likes, int64_t& dislikes, std::string& error);

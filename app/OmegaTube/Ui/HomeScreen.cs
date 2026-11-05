@@ -60,6 +60,10 @@ namespace OmegaTube.Ui
         private List<HomeChip> homeChips;
         private int chipIndex;
         private bool inChips;
+        private int subsFilter;
+        private View subsChipHost;
+        private readonly List<View> subsChipPills = new List<View>();
+        private bool inSubsChips;
 
         public HomeScreen(App app) : base(app)
         {
@@ -218,8 +222,8 @@ namespace OmegaTube.Ui
             else
             {
                 // Back from another screen (often a video just watched): History has changed.
-                loadedAt.Remove("history");
-                if (sections[current].Key == "history")
+                loadedAt.Remove("you");
+                if (sections[current].Key == "you")
                 {
                     ShowSection(current);
                 }
@@ -278,15 +282,10 @@ namespace OmegaTube.Ui
                 {
                     Key = "subscriptions", Title = T("Subscriptions"), Icon = "subscriptions", CacheKey = "subscriptions",
                     RefreshOnOpen = true,
-                    Loader = signedIn ? (Func<string, Task<FeedPage>>)(c => YouTube.Browse("FEsubscriptions", c)) : null,
+                    Loader = signedIn ? (Func<string, Task<FeedPage>>)(c => LoadSubscriptions(c)) : null,
                     EmptyText = T("Sign in to your account (Account menu) to see the videos of your subscriptions."),
                 },
-                new Section
-                {
-                    Key = "history", Title = T("History"), Icon = "history", CacheKey = "history",
-                    Loader = signedIn ? (Func<string, Task<FeedPage>>)(c => YouTube.Browse("FEhistory", c)) : null,
-                    EmptyText = T("Sign in to your account (Account menu) to see your history."),
-                },
+                new Section { Key = "you", Title = T("You"), Icon = "video_library", Embed = () => new YouScreen(App) },
             };
             foreach (HomeRow row in App.Config.HomeRows)
             {
@@ -331,6 +330,56 @@ namespace OmegaTube.Ui
                 page.Shelves[i] = shelf;
             }
             return page;
+        }
+
+        private async Task<FeedPage> LoadSubscriptions(string continuation)
+        {
+            FeedPage page = await YouTube.Browse("FEsubscriptions", continuation);
+            if (!string.IsNullOrEmpty(page.Error) || continuation.Length > 0)
+            {
+                return page;
+            }
+            if (subsFilter == 1)
+            {
+                page.Items = FilterUnwatched(page.Items);
+                page.Highlights = FilterUnwatched(page.Highlights);
+            }
+            else if (subsFilter == 2)
+            {
+                page.Items = FilterLive(page.Items);
+                page.Highlights = FilterLive(page.Highlights);
+            }
+            if (page.Items.Count == 0 && page.Highlights.Count == 0 && subsFilter != 0)
+            {
+                page.Error = subsFilter == 2 ? T("No live streams from subscriptions") : T("No unwatched videos from subscriptions");
+            }
+            return page;
+        }
+
+        private static List<VideoItem> FilterUnwatched(List<VideoItem> list)
+        {
+            var outList = new List<VideoItem>();
+            foreach (VideoItem item in list)
+            {
+                if (item.WatchedPercent == 0 && LocalStore.ResumePosition(item.Id) <= 0)
+                {
+                    outList.Add(item);
+                }
+            }
+            return outList;
+        }
+
+        private static List<VideoItem> FilterLive(List<VideoItem> list)
+        {
+            var outList = new List<VideoItem>();
+            foreach (VideoItem item in list)
+            {
+                if (item.Live)
+                {
+                    outList.Add(item);
+                }
+            }
+            return outList;
         }
 
         // Returns false when the sections are unchanged (nothing rebuilt).
@@ -679,9 +728,17 @@ namespace OmegaTube.Ui
             }
             else if (key == "Return")
             {
+                if (Feed is FeedGrid fg && fg.CardMenuKey(key))
+                {
+                    return true;
+                }
                 if (Feed != null && Feed.LoadFailed)
                 {
                     Feed.RetryLoad();
+                    return true;
+                }
+                if (Feed != null && Feed.OnReturnPress())
+                {
                     return true;
                 }
                 VideoItem item = Feed?.FocusedItem;
@@ -689,6 +746,10 @@ namespace OmegaTube.Ui
                 {
                     App.Play(item);
                 }
+                return true;
+            }
+            else if (Feed is FeedGrid gridMenu && gridMenu.CardMenuKey(key))
+            {
                 return true;
             }
             else if (Feed != null && !Feed.Move(key) && key == "Left")

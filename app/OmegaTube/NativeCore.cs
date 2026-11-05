@@ -184,6 +184,11 @@ namespace OmegaTube
 
         public static IntPtr YtSubscribe(string channelId, bool subscribe) => YtSubscribeRaw(Utf8z(channelId), subscribe ? 1 : 0);
 
+        [DllImport(Lib, EntryPoint = "omega_yt_account_action")]
+        private static extern IntPtr YtAccountActionRaw(byte[] actionJson);
+
+        public static IntPtr YtAccountAction(string actionJson) => YtAccountActionRaw(Utf8z(actionJson ?? ""));
+
         [DllImport(Lib, EntryPoint = "omega_yt_channel")]
         private static extern IntPtr YtChannelRaw(byte[] channelId, byte[] continuation);
 
