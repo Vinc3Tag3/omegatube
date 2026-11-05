@@ -60,16 +60,16 @@ description: "Task list for YouTube UI parity feature"
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Implémenter browse WEB anonyme (sans Bearer) pour `remote-config.json` → `home.signedOutBrowseId` dans `core/src/yt/innertube.cpp` + wrapper `omega_yt_home_anon` dans `core/include/omega/core.h` et `core/src/core.cpp` (même forme JSON que recherche / étagères)
-- [ ] T013 [P] [US1] Ajouter `omega_yt_browse` réponse `chips[]` pour `FEwhat_to_watch` quand InnerTube les fournit ; sinon l’interface lira `homeChips` depuis config (`core/src/yt/innertube.cpp`)
-- [ ] T014 [P] [US1] Déclarer `YtHomeAnon` dans `app/OmegaTube/NativeCore.cs` et méthodes `YouTube.HomeAnon` / `YouTube.HomeChips` dans `app/OmegaTube/Data/YouTube.cs`
-- [ ] T015 [US1] Afficher avatar chaîne, badge vérifié, badges live/nouveau/première, repères playlist/mix et `itemCount` dans `app/OmegaTube/Ui/Card.cs` (`Fill`) ; badges absents = pas de placeholder cassé
-- [ ] T016 [US1] Ajouter rangée skeleton (cartes grises sans texte) dans `app/OmegaTube/Ui/FeedGrid.cs` et `app/OmegaTube/Ui/ShelfList.cs` pendant chargement ; remplacer par erreur + Réessayer si échec réseau
-- [ ] T017 [US1] Construire étagère « Reprendre » en tête dans `app/OmegaTube/Ui/HomeScreen.cs` + `app/OmegaTube/Ui/ShelfList.cs` via `LocalStore.ListResumeCandidates()` ; masquer l’étagère si liste vide
-- [ ] T018 [US1] UI pastilles au-dessus des étagères dans `app/OmegaTube/Ui/HomeScreen.cs` : « Tout » + chips ; filtrage par `browseId` sans quitter l’accueil ; état vide dédié par pastille
-- [ ] T019 [US1] Brancher accueil sans compte sur `YouTube.HomeAnon` dans `app/OmegaTube/Ui/HomeScreen.cs` (`BuildSections` / loader `home`) au lieu d’un écran vide-only
-- [ ] T020 [P] [US1] Libellés I18n (`Reprendre`, pastilles, badges, skeleton, retry) dans `app/OmegaTube/I18n.cs` (en source, fr, es)
-- [ ] T021 [US1] Ajouter `build/host/ytcheck --home-anon` dans `core/tools/ytcheck.cpp` ; au moins une vidéo, pas de `signed out`
+- [x] T012 [US1] Implémenter browse WEB anonyme (sans Bearer) pour `remote-config.json` → `home.signedOutBrowseId` dans `core/src/yt/innertube.cpp` + wrapper `omega_yt_home_anon` dans `core/include/omega/core.h` et `core/src/core.cpp` (même forme JSON que recherche / étagères)
+- [x] T013 [P] [US1] Ajouter `omega_yt_browse` réponse `chips[]` pour `FEwhat_to_watch` quand InnerTube les fournit ; sinon l’interface lira `homeChips` depuis config (`core/src/yt/innertube.cpp`)
+- [x] T014 [P] [US1] Déclarer `YtHomeAnon` dans `app/OmegaTube/NativeCore.cs` et méthodes `YouTube.HomeAnon` / `YouTube.HomeChips` dans `app/OmegaTube/Data/YouTube.cs`
+- [x] T015 [US1] Afficher avatar chaîne, badge vérifié, badges live/nouveau/première, repères playlist/mix et `itemCount` dans `app/OmegaTube/Ui/Card.cs` (`Fill`) ; badges absents = pas de placeholder cassé
+- [x] T016 [US1] Ajouter rangée skeleton (cartes grises sans texte) dans `app/OmegaTube/Ui/FeedGrid.cs` et `app/OmegaTube/Ui/ShelfList.cs` pendant chargement ; remplacer par erreur + Réessayer si échec réseau
+- [x] T017 [US1] Construire étagère « Reprendre » en tête dans `app/OmegaTube/Ui/HomeScreen.cs` + `app/OmegaTube/Ui/ShelfList.cs` via `LocalStore.ListResumeCandidates()` ; masquer l’étagère si liste vide
+- [x] T018 [US1] UI pastilles au-dessus des étagères dans `app/OmegaTube/Ui/HomeScreen.cs` : « Tout » + chips ; filtrage par `browseId` sans quitter l’accueil ; état vide dédié par pastille
+- [x] T019 [US1] Brancher accueil sans compte sur `YouTube.HomeAnon` dans `app/OmegaTube/Ui/HomeScreen.cs` (`BuildSections` / loader `home`) au lieu d’un écran vide-only
+- [x] T020 [P] [US1] Libellés I18n (`Reprendre`, pastilles, badges, skeleton, retry) dans `app/OmegaTube/I18n.cs` (en source, fr, es)
+- [x] T021 [US1] Ajouter `build/host/ytcheck --home-anon` dans `core/tools/ytcheck.cpp` ; au moins une vidéo, pas de `signed out`
 
 **Checkpoint**: MVP accueil — quickstart §1–5 OK sur TV.
 

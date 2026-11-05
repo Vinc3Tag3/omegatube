@@ -30,6 +30,8 @@ namespace OmegaTube.Ui
 
         private const int ContentX = Theme.RailWidth + 20;
         private const int GridTop = 110;
+        private const int ChipBarH = 52;
+        private const int ChipBarY = 100;
         private const int OpenDelayMs = 350;   // pause on a rail entry before it opens
         private const float EmbedScale = (1920f - Theme.RailWidth) / 1920f;
         private static readonly TimeSpan StaleAfter = TimeSpan.FromMinutes(5);
@@ -52,6 +54,13 @@ namespace OmegaTube.Ui
         private bool inRail;
         private bool dirty = true;
 
+        private string homeChipBrowseId = "";
+        private View chipHost;
+        private readonly List<View> chipPills = new List<View>();
+        private List<HomeChip> homeChips;
+        private int chipIndex;
+        private bool inChips;
+
         public HomeScreen(App app) : base(app)
         {
             Root.BackgroundColor = Theme.Background;
@@ -64,6 +73,76 @@ namespace OmegaTube.Ui
                                    ClippingMode = ClippingModeType.ClipChildren };
             embedHost.Hide();
             Root.Add(embedHost);
+            homeChips = YouTube.HomeChips(null);
+        }
+
+        private void EnsureChipBar()
+        {
+            if (chipHost != null)
+            {
+                return;
+            }
+            chipHost = new View { Position = new Position(ContentX, ChipBarY), Size = new Size(1920 - ContentX, ChipBarH) };
+            chipHost.Hide();
+            Root.Add(chipHost);
+            RebuildChipBar();
+        }
+
+        private void RebuildChipBar()
+        {
+            foreach (View p in chipPills)
+            {
+                chipHost.Remove(p);
+                p.Dispose();
+            }
+            chipPills.Clear();
+            int x = Theme.FocusMargin;
+            for (int i = 0; i < homeChips.Count; i++)
+            {
+                int idx = i;
+                string label = T(homeChips[i].Label);
+                var pill = Widgets.Label("  " + label + "  ", Theme.BodySize - 2, Theme.Text, 0, ChipBarH - 8);
+                pill.BackgroundColor = idx == chipIndex ? Theme.SurfaceHigh : Theme.Surface;
+                Widgets.Round(pill, (ChipBarH - 8) / 2f);
+                pill.Position = new Position(x, 2);
+                chipHost.Add(pill);
+                chipPills.Add(pill);
+                x += (int)pill.SizeWidth + 14;
+            }
+        }
+
+        private void UpdateChipBarFocus()
+        {
+            for (int i = 0; i < chipPills.Count; i++)
+            {
+                chipPills[i].BackgroundColor = i == chipIndex ? Theme.SurfaceHigh : Theme.Surface;
+                if (inChips && i == chipIndex)
+                {
+                    chipPills[i].BackgroundColor = Theme.Accent;
+                }
+            }
+        }
+
+        private void ReloadHomeForChip()
+        {
+            if (chipIndex < 0 || chipIndex >= homeChips.Count)
+            {
+                return;
+            }
+            homeChipBrowseId = homeChips[chipIndex].BrowseId ?? "";
+            if (feeds.TryGetValue("home", out View old))
+            {
+                feedHost.Remove(old);
+                old.Dispose();
+                feeds.Remove("home");
+                loadedAt.Remove("home");
+                if (feedView == old)
+                {
+                    feedView = null;
+                }
+            }
+            inChips = false;
+            ShowSection(current);
         }
 
         // A newer GitHub release exists: the app cannot install itself, so point to the release page.
@@ -191,8 +270,8 @@ namespace OmegaTube.Ui
                 new Section
                 {
                     Key = "home", Title = T("Home"), Icon = "home", CacheKey = "home-shelves", Shelves = true, RefreshOnOpen = true,
-                    Loader = signedIn ? (Func<string, Task<FeedPage>>)(c => YouTube.Browse("FEwhat_to_watch", c)) : null,
-                    EmptyText = T("Sign in to your account (Account menu) to see your recommendations, or use Search and the menu sections."),
+                    Loader = LoadHome,
+                    EmptyText = T("Could not load home. Check your network and try again."),
                 },
                 new Section { Key = "search", Title = T("Search"), Icon = "search", Embed = () => new SearchScreen(App) },
                 new Section
@@ -225,6 +304,33 @@ namespace OmegaTube.Ui
             list.Add(new Section { Key = "account", Title = T("Account"), Icon = "set_account", Embed = () => new AccountScreen(App) });
             list.Add(new Section { Key = "settings", Title = T("Settings"), Icon = "settings", Embed = () => new SettingsScreen(App) });
             return list;
+        }
+
+        private async Task<FeedPage> LoadHome(string continuation)
+        {
+            FeedPage page = YouTube.SignedIn()
+                ? await YouTube.Browse("FEwhat_to_watch", continuation)
+                : await YouTube.HomeAnon(homeChipBrowseId, continuation);
+            if (!string.IsNullOrEmpty(page.Error) || !string.IsNullOrEmpty(continuation))
+            {
+                return page;
+            }
+            if (page.Shelves.Count == 0 && page.Items.Count == 0)
+            {
+                page.Shelves.Add(new Shelf { Title = T("No videos for this topic"), Items = new List<VideoItem>() });
+            }
+            List<VideoItem> resume = LocalStore.ListResumeCandidates();
+            if (resume.Count > 0)
+            {
+                page.Shelves.Insert(0, new Shelf { Title = T("Resume watching"), Items = SessionHide.Filter(resume) });
+            }
+            for (int i = 0; i < page.Shelves.Count; i++)
+            {
+                Shelf shelf = page.Shelves[i];
+                shelf.Items = SessionHide.Filter(shelf.Items);
+                page.Shelves[i] = shelf;
+            }
+            return page;
         }
 
         // Returns false when the sections are unchanged (nothing rebuilt).
@@ -279,10 +385,9 @@ namespace OmegaTube.Ui
             int index = currentKey != null ? sections.FindIndex(s => s.Key == currentKey) : -1;
             if (index < 0)
             {
-                // Signed out, Home has nothing: start on the first feed section instead.
-                bool signedIn = sections[0].Loader != null;
-                index = signedIn ? 0 : sections.FindIndex(s => s.Loader != null);
-                index = Math.Max(0, index);
+                // Signed out: still open Home (anonymous browse); stay in rail until user enters content.
+                bool signedIn = YouTube.SignedIn();
+                index = 0;
                 inRail = !signedIn;
             }
             ShowSection(index);
@@ -328,6 +433,17 @@ namespace OmegaTube.Ui
             embedHost.Hide();
             header.Show();
             header.Text = s.Title;
+            if (s.Key == "home")
+            {
+                EnsureChipBar();
+                chipHost.Show();
+                UpdateChipBarFocus();
+            }
+            else
+            {
+                chipHost?.Hide();
+                inChips = false;
+            }
             bool built = feeds.ContainsKey(s.Key);
             View v = FeedFor(s);
             ShowFeed(v);
@@ -370,7 +486,8 @@ namespace OmegaTube.Ui
             }
             if (s.Shelves && s.Loader != null)
             {
-                var list = new ShelfList(1920 - ContentX, 1080 - GridTop + 20) { Position = new Position(ContentX, GridTop - 20) };
+                int top = s.Key == "home" ? GridTop + ChipBarH : GridTop;
+                var list = new ShelfList(1920 - ContentX, 1080 - top + 20) { Position = new Position(ContentX, top - 20) };
                 list.Show(s.Loader, s.CacheKey);
                 v = list;
             }
@@ -478,12 +595,39 @@ namespace OmegaTube.Ui
         private void UpdateFocus()
         {
             rail.SetFocused(inRail);
-            Feed?.SetFocused(!inRail && shown == null);
+            Feed?.SetFocused(!inRail && shown == null && !inChips);
+            UpdateChipBarFocus();
         }
 
         public override bool OnKey(string key)
         {
             bool back = key == "XF86Back" || key == "Escape";
+            if (inChips && sections[current].Key == "home")
+            {
+                switch (key)
+                {
+                    case "Left":
+                        chipIndex = Math.Max(0, chipIndex - 1);
+                        break;
+                    case "Right":
+                        chipIndex = Math.Min(homeChips.Count - 1, chipIndex + 1);
+                        break;
+                    case "Down":
+                    case "Return":
+                        ReloadHomeForChip();
+                        break;
+                    case "Up":
+                    case "XF86Back":
+                    case "Escape":
+                        inChips = false;
+                        inRail = true;
+                        break;
+                    default:
+                        return true;
+                }
+                UpdateFocus();
+                return true;
+            }
             if (inRail)
             {
                 switch (key)
@@ -528,8 +672,18 @@ namespace OmegaTube.Ui
             {
                 inRail = true;
             }
+            else if (key == "Up" && sections[current].Key == "home" && !inRail)
+            {
+                inChips = true;
+                UpdateFocus();
+            }
             else if (key == "Return")
             {
+                if (Feed != null && Feed.LoadFailed)
+                {
+                    Feed.RetryLoad();
+                    return true;
+                }
                 VideoItem item = Feed?.FocusedItem;
                 if (item != null)
                 {

@@ -61,6 +61,24 @@ int main(int argc, char** argv) {
         printf("selfcheck OK\n");
         return 0;
     }
+    if (argc >= 2 && strcmp(argv[1], "--home-anon") == 0) {
+        omega::yt::Client client;
+        omega::yt::Feed feed;
+        std::string error;
+        const char* browse = argc >= 3 ? argv[2] : "";
+        if (!client.browse_web(browse, "", feed, error)) {
+            printf("home-anon failed: %s\n", error.c_str());
+            return 1;
+        }
+        size_t videos = 0;
+        for (const auto& s : feed.shelves) videos += s.items.size();
+        if (videos == 0) {
+            printf("home-anon: no videos\n");
+            return 1;
+        }
+        printf("home-anon OK: %zu shelves, %zu videos, %zu chips\n", feed.shelves.size(), videos, feed.chips.size());
+        return 0;
+    }
     if (argc >= 3 && strcmp(argv[1], "--get") == 0) {
         omega::net::Request req;
         req.url = argv[2];

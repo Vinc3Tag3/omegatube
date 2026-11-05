@@ -313,6 +313,30 @@ void collect_shelves(const json& j, Feed& out) {
     }
 }
 
+// Home chip cloud (signed-in TV home or some WEB browse pages).
+void collect_chips(const json& j, std::vector<HomeChip>& out) {
+    if (j.is_object()) {
+        for (auto it = j.begin(); it != j.end(); ++it) {
+            if (it.key() == "chipCloudChipRenderer" && it.value().is_object()) {
+                const json& chip = it.value();
+                HomeChip c;
+                c.label = text_of(chip.value("text", json::object()));
+                if (c.label.empty()) continue;
+                if (const json* nav = find_key(chip, "navigationEndpoint")) {
+                    if (const json* be = find_key(*nav, "browseEndpoint"))
+                        c.browse_id = be->value("browseId", "");
+                }
+                c.id = c.browse_id.empty() ? c.label : c.browse_id;
+                out.push_back(std::move(c));
+            } else {
+                collect_chips(it.value(), out);
+            }
+        }
+    } else if (j.is_array()) {
+        for (const json& e : j) collect_chips(e, out);
+    }
+}
+
 // "video/mp4; codecs=\"avc1.64002A\"" -> mime + codecs
 void split_mime(const std::string& full, std::string& mime, std::string& codecs) {
     size_t semi = full.find(';');
@@ -919,6 +943,7 @@ bool Client::browse(const std::string& browse_id, const std::string& continuatio
     if (browse_id == "FEwhat_to_watch") {
         // Home: rows by topic (next pages bring more rows).
         collect_shelves(r, out);
+        collect_chips(r, out.chips);
     } else {
         // Subscriptions "Tous" tab: a titled "most relevant" shelf, then untitled shelves in date order.
         Feed picked;
@@ -927,6 +952,55 @@ bool Client::browse(const std::string& browse_id, const std::string& continuatio
     }
     OLOG("yt: browse %s%s -> %zu items, %zu highlights, %zu shelves", browse_id.c_str(),
          continuation.empty() ? "" : " (next page)", out.items.size(), out.highlights.size(), out.shelves.size());
+    return true;
+}
+
+bool Client::browse_web(const std::string& browse_id, const std::string& continuation, Feed& out,
+                          std::string& error) {
+    if (!ensure_visitor(error)) return false;
+    ClientDef def = client_def("search", visitor_data_, web_client_version_);
+    json body = {{"context", {{"client", def.client}}}};
+    if (continuation.empty()) {
+        std::string id = browse_id.empty() ? cfg::str({"home", "signedOutBrowseId"}, "FEtrending") : browse_id;
+        body["browseId"] = id;
+    } else {
+        body["continuation"] = continuation;
+    }
+    net::Request req;
+    req.method = "POST";
+    req.url = "https://www.youtube.com/youtubei/v1/browse?prettyPrint=false";
+    req.headers = client_headers(def, visitor_data_);
+    req.body = body.dump();
+    net::Response res = net::fetch(req);
+    if (!res.ok()) {
+        error = http_error("browse_web", res);
+        return false;
+    }
+    last_response_ = res.body;
+    json r = json::parse(res.body, nullptr, false);
+    if (r.is_discarded()) {
+        error = "browse_web: invalid json";
+        return false;
+    }
+    out = Feed{};
+    Feed shelved;
+    collect_shelves(r, shelved);
+    if (!shelved.shelves.empty()) {
+        out.shelves = std::move(shelved.shelves);
+        out.continuation = shelved.continuation;
+    } else {
+        collect(r, out);
+        if (!out.items.empty()) {
+            Shelf row;
+            row.title = "Trending";
+            row.items = std::move(out.items);
+            out.items.clear();
+            out.shelves.push_back(std::move(row));
+        }
+    }
+    collect_chips(r, out.chips);
+    OLOG("yt: browse_web %s%s -> %zu shelves, %zu chips", browse_id.c_str(),
+         continuation.empty() ? "" : " (next page)", out.shelves.size(), out.chips.size());
     return true;
 }
 

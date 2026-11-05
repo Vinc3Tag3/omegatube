@@ -32,6 +32,10 @@ namespace OmegaTube.Ui
         private int generation;
         private readonly Func<bool> pump;
         private Animation scroll;
+        private bool loadFailed;
+        private readonly List<View> skeletonBlocks = new List<View>();
+
+        public bool LoadFailed => loadFailed;
 
         public ShelfList(int width, int height)
         {
@@ -52,6 +56,7 @@ namespace OmegaTube.Ui
         {
             generation++;
             Clear();
+            loadFailed = false;
             loader = newLoader;
             cacheKey = newCacheKey;
             continuation = "";
@@ -60,6 +65,7 @@ namespace OmegaTube.Ui
             focus = 0;
             content.PositionY = 0;
             status.Text = T("Loading…");
+            ShowSkeleton();
             if (cacheKey != null)
             {
                 UiGuard.Fire("ShelfList.ShowCached", () => ShowCached(cacheKey, generation));
@@ -76,8 +82,19 @@ namespace OmegaTube.Ui
                 return;
             }
             AddShelves(cached.Shelves, seedContinuations: false);
+            ClearSkeleton();
             status.Text = "";
             AfterChange();
+        }
+
+        public void RetryLoad()
+        {
+            if (loader == null)
+            {
+                return;
+            }
+            loadFailed = false;
+            Refresh();
         }
 
         public void Wake()
@@ -118,12 +135,44 @@ namespace OmegaTube.Ui
 
         private void Clear()
         {
+            ClearSkeleton();
             foreach (FeedRow r in rows)
             {
                 content.Remove(r);
                 r.Dispose();
             }
             rows.Clear();
+        }
+
+        private void ShowSkeleton()
+        {
+            ClearSkeleton();
+            int step = Theme.CardWidth + Theme.CardGap;
+            for (int r = 0; r < 3; r++)
+            {
+                var block = new View { Position = new Position(0, r * Theme.RowHeight), Size = new Size(width, Theme.RowHeight) };
+                var titleBar = Widgets.Box(Theme.SurfaceHigh, 220, 26);
+                titleBar.Position = new Position(Theme.FocusMargin, 8);
+                block.Add(titleBar);
+                for (int c = 0; c < 4; c++)
+                {
+                    var ph = Card.Placeholder();
+                    ph.Position = new Position(Theme.FocusMargin + c * step, 64);
+                    block.Add(ph);
+                }
+                content.Add(block);
+                skeletonBlocks.Add(block);
+            }
+        }
+
+        private void ClearSkeleton()
+        {
+            foreach (View b in skeletonBlocks)
+            {
+                content.Remove(b);
+                b.Dispose();
+            }
+            skeletonBlocks.Clear();
         }
 
         // `reuse`: rows shown from the cache, recycled when the shelf at the same place has the same title.
@@ -169,12 +218,16 @@ namespace OmegaTube.Ui
             loading = false;
             if (page.Error != null)
             {
+                loadFailed = true;
                 if (rows.Count == 0)
                 {
-                    status.Text = T("Error: {0}", page.Error);
+                    ClearSkeleton();
+                    status.Text = T("Error: {0}. {1}", page.Error, T("Press OK to retry"));
                 }
                 return;
             }
+            ClearSkeleton();
+            loadFailed = false;
             List<FeedRow> reuse = null;
             if (!fresh)
             {
@@ -200,7 +253,7 @@ namespace OmegaTube.Ui
                 }
             }
             focus = Math.Min(focus, Math.Max(0, rows.Count - 1));
-            status.Text = rows.Count == 0 ? T("No videos") : "";
+            status.Text = rows.Count == 0 && !loadFailed ? T("No videos") : "";
             AfterChange();
             MaybePrefetch();
         }
