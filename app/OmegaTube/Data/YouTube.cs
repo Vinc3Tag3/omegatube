@@ -120,9 +120,9 @@ namespace OmegaTube.Data
     // continuations come back on the UI thread through the Tizen synchronization context).
     public static class YouTube
     {
-        public static Task<FeedPage> Search(string query, string continuation = "")
+        public static Task<FeedPage> Search(string query, string continuation = "", string filtersJson = null)
         {
-            return Task.Run(() => ToPage(Call(NativeCore.YtSearch(query, continuation ?? ""))));
+            return Task.Run(() => ToPage(Call(NativeCore.YtSearch(query, continuation ?? "", filtersJson))));
         }
 
         // The videos after videoId in a playlist / mix (page.Title: the list's name).
@@ -239,7 +239,7 @@ namespace OmegaTube.Data
                     Title = Json.Str(o, "title"),
                     Channel = Json.Str(o, "channel"),
                     Duration = Json.Str(o, "duration"),
-                    Views = Json.Str(o, "views"),
+                    Views = string.IsNullOrEmpty(Json.Str(o, "views")) ? Json.Str(o, "subscribers") : Json.Str(o, "views"),
                     Published = Json.Str(o, "published"),
                     Thumbnail = Json.Str(o, "thumbnail"),
                     Live = Json.Bool(o, "live"),

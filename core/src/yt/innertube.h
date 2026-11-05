@@ -117,7 +117,9 @@ public:
     net::Headers stream_headers() const;
 
     // Video search (WEB client). Pass the previous Feed::continuation to get the next page.
-    bool search(const std::string& query, const std::string& continuation, Feed& out, std::string& error);
+    // filter_params: base64 SearchFilter from encode_search_filters (empty = none).
+    bool search(const std::string& query, const std::string& continuation, const std::string& filter_params,
+                Feed& out, std::string& error);
     // The videos after video_id in a playlist or mix (WEB "next" endpoint with playlistId). A mix is endless:
     // asking again from a later video continues it.
     bool playlist(const std::string& video_id, const std::string& playlist_id, Feed& out, std::string& title,
