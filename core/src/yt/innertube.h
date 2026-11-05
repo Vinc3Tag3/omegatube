@@ -34,12 +34,14 @@ struct Format {
 // One entry of a feed (search results, channel videos...).
 struct FeedItem {
     std::string video_id, title, channel, duration, views, published, thumbnail;
-    // Playlists and mixes: playlist_id + the first video to play (video_id). Videos inside a playlist
-    // (Client::playlist) keep kind "video" with the playlist_id they belong to.
     std::string playlist_id;
     std::string kind = "video";  // "video" | "playlist" | "mix"
+    std::string channel_avatar;
+    std::string badge;  // "" | "live" | "new" | "premiere"
+    bool verified = false;
+    int item_count = 0;
     bool is_live = false;
-    int watched_percent = 0;  // account's progress as YouTube reports it (signed-in feeds)
+    int watched_percent = 0;
 };
 
 // A titled row of the TV home ("Recommandations", "Jeux vidéo"...); continuation = more items of that row.

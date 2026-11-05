@@ -353,7 +353,11 @@ nlohmann::json items_json(const std::vector<omega::yt::FeedItem>& list) {
                          {"live", it.is_live},
                          {"watched", it.watched_percent},
                          {"playlistId", it.playlist_id},
-                         {"kind", it.kind}});
+                         {"kind", it.kind},
+                         {"channelAvatar", it.channel_avatar},
+                         {"verified", it.verified},
+                         {"badge", it.badge},
+                         {"itemCount", it.item_count}});
     return items;
 }
 

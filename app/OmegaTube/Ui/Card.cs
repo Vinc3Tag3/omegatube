@@ -19,6 +19,7 @@ namespace OmegaTube.Ui
         private readonly ImageView thumb;
         private readonly View info, infoTopPatch;
         private readonly View progress;
+        private readonly View focusRing;
         private TextLabel title, meta;
         private bool focused;
         private Animation zoom;
@@ -43,6 +44,11 @@ namespace OmegaTube.Ui
             };
             Widgets.Round(thumb, Theme.CardRadius);
             Add(thumb);
+            focusRing = Widgets.Box(Theme.FocusRing, width, thumbH + Theme.CardRadius);
+            Widgets.Round(focusRing, Theme.CardRadius);
+            focusRing.Position = new Position(0, 0);
+            focusRing.Hide();
+            Add(focusRing);
 
             info = new View
             {
@@ -70,11 +76,11 @@ namespace OmegaTube.Ui
                 return;
             }
             Filled = true;
-            string badge = Item.Live ? T("LIVE") : Item.Duration;
+            string badge = BadgeText(Item);
             if (!string.IsNullOrEmpty(badge))
             {
                 var duration = Widgets.Label(" " + badge + " ", Theme.SmallSize - 2, Theme.Text);
-                duration.BackgroundColor = Item.Live ? Theme.Accent : new Color(0, 0, 0, 0.82f);
+                duration.BackgroundColor = Item.Live || Item.Badge == "live" ? Theme.Accent : new Color(0, 0, 0, 0.82f);
                 Widgets.Round(duration, 4);
                 duration.ParentOrigin = Tizen.NUI.ParentOrigin.TopLeft;
                 duration.PivotPoint = Tizen.NUI.PivotPoint.BottomRight;
@@ -111,9 +117,38 @@ namespace OmegaTube.Ui
             UpdateProgress();
         }
 
+        private static string BadgeText(VideoItem item)
+        {
+            if (item.Live || item.Badge == "live")
+            {
+                return T("LIVE");
+            }
+            if (item.Badge == "new")
+            {
+                return T("New");
+            }
+            if (item.Badge == "premiere")
+            {
+                return T("Premiere");
+            }
+            if (item.IsList)
+            {
+                if (item.ItemCount > 0)
+                {
+                    return item.ItemCount.ToString();
+                }
+                return item.Kind == "mix" ? "MIX" : T("Playlist");
+            }
+            return item.Duration;
+        }
+
         private static string MetaLine(VideoItem item)
         {
             string line = item.Channel;
+            if (item.Verified && !string.IsNullOrEmpty(line))
+            {
+                line += " ✓";
+            }
             if (!string.IsNullOrEmpty(item.Views))
             {
                 line += " • " + item.Views;
@@ -140,6 +175,14 @@ namespace OmegaTube.Ui
                 return;   // grids refresh every card's state after a page: no animation for unchanged ones
             }
             this.focused = focused;
+            if (focused)
+            {
+                focusRing.Show();
+            }
+            else
+            {
+                focusRing.Hide();
+            }
             ApplyFocusColors();
             zoom?.Stop();
             zoom = new Animation(140);
@@ -154,12 +197,12 @@ namespace OmegaTube.Ui
 
         private void ApplyFocusColors()
         {
-            info.BackgroundColor = focused ? Theme.CardInfoFocused : Theme.CardInfo;
-            infoTopPatch.BackgroundColor = info.BackgroundColor;
+            info.BackgroundColor = Theme.CardInfo;
+            infoTopPatch.BackgroundColor = Theme.CardInfo;
             if (Filled)
             {
-                title.TextColor = focused ? Theme.CardTextFocused : Theme.Text;
-                meta.TextColor = focused ? Theme.CardTextFocused : Theme.TextDim;
+                title.TextColor = Theme.Text;
+                meta.TextColor = Theme.TextDim;
             }
         }
     }
