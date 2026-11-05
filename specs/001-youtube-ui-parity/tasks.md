@@ -83,12 +83,12 @@ description: "Task list for YouTube UI parity feature"
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Ajouter panneau « Informations » dans `app/OmegaTube/Ui/PlayerScreen.cs` : titre, ligne chaîne (avatar, abonnés), abonnement, like/dislike avec compteurs RYD, aperçu description, sans mettre en pause la vidéo
-- [ ] T023 [US2] Remplacer la rangée horizontale de suggestions par liste verticale « À suivre » (≥3 entrées si disponibles) dans le panneau infos de `app/OmegaTube/Ui/PlayerScreen.cs`, alimentée par `YouTube.Related` existant
-- [ ] T024 [US2] Interrupteur « Lecture automatique » dans le panneau infos lié à `AppConfig.Player.Autoplay` dans `app/OmegaTube/Config/AppConfig.cs` et persistance via `AppConfig.Save`
-- [ ] T025 [US2] Grande carte « À suivre » + compte à rebours annulable en fin de VOD dans `app/OmegaTube/Ui/PlayerScreen.cs` ; respecter autoplay off (aucune suite) ; direct sans compte à rebours replay
-- [ ] T026 [P] [US2] Action Partager : QR `https://www.youtube.com/watch?v=` via `NativeCore.QrEncode` / flux existant dans `app/OmegaTube/Ui/PlayerScreen.cs`
-- [ ] T027 [P] [US2] Libellés I18n panneau infos, autoplay, carte fin, partager dans `app/OmegaTube/I18n.cs`
+- [x] T022 [US2] Ajouter panneau « Informations » dans `app/OmegaTube/Ui/PlayerScreen.cs` : titre, ligne chaîne (avatar, abonnés), abonnement, like/dislike avec compteurs RYD, aperçu description, sans mettre en pause la vidéo
+- [x] T023 [US2] Remplacer la rangée horizontale de suggestions par liste verticale « À suivre » (≥3 entrées si disponibles) dans le panneau infos de `app/OmegaTube/Ui/PlayerScreen.cs`, alimentée par `YouTube.Related` existant
+- [x] T024 [US2] Interrupteur « Lecture automatique » dans le panneau infos lié à `AppConfig.Player.Autoplay` dans `app/OmegaTube/Config/AppConfig.cs` et persistance via `AppConfig.Save`
+- [x] T025 [US2] Grande carte « À suivre » + compte à rebours annulable en fin de VOD dans `app/OmegaTube/Ui/PlayerScreen.cs` ; respecter autoplay off (aucune suite) ; direct sans compte à rebours replay
+- [x] T026 [P] [US2] Action Partager : QR `https://www.youtube.com/watch?v=` via `NativeCore.QrEncode` / flux existant dans `app/OmegaTube/Ui/PlayerScreen.cs`
+- [x] T027 [P] [US2] Libellés I18n panneau infos, autoplay, carte fin, partager dans `app/OmegaTube/I18n.cs`
 
 **Checkpoint**: US1 + US2 — lecture avec contexte site testable seule.
 

@@ -43,7 +43,7 @@ namespace OmegaTube.Ui
             public TextLabel Label;
             public bool Active;      // subscribed / liked / disliked
         }
-        private enum Action { Restart, Rewind, PlayPause, Forward, Next, Skip, Captions, Audio, Speed, Quality, Loop, Info, Stats }
+        private enum Action { Restart, Rewind, PlayPause, Forward, Next, Skip, Captions, Audio, Speed, Quality, Loop, Info, Stats, Share }
 
         private class Button
         {
@@ -96,10 +96,19 @@ namespace OmegaTube.Ui
         private Action panelKind;
         private Animation slide;
 
-        // Description panel
+        // Description / Informations panel
         private View infoPanel;
+        private ImageView infoAvatar;
+        private TextLabel infoTitle, infoMeta, infoSocial, infoAutoplay;
         private TextLabel infoText;
+        private View infoRelatedClip;
+        private readonly List<TextLabel> infoRelatedRows = new List<TextLabel>();
+        private readonly List<VideoItem> infoRelatedItems = new List<VideoItem>();
         private float infoScroll;
+        private int infoRelatedFocus = -1;
+        private bool infoAutoplayFocused;
+
+        private View shareOverlay, shareQrHost;
 
         // End of video: "up next" card
         private View upNext;
@@ -246,6 +255,7 @@ namespace OmegaTube.Ui
             AddButton(Action.Next, "skip_next", ref x);
             // Right group, right to left.
             AddRightButton(Action.Stats, "stats");
+            AddRightButton(Action.Share, "share");
             AddRightButton(Action.Info, "info");
             AddRightButton(Action.Loop, "repeat");
             AddRightButton(Action.Quality, "quality");
@@ -816,6 +826,10 @@ namespace OmegaTube.Ui
             };
             chrome.Add(suggestions);
             await suggestions.Load();
+            if (!InList)
+            {
+                suggestions.Hide();
+            }
         }
 
         private async Task LoadSegments()
@@ -1377,6 +1391,7 @@ namespace OmegaTube.Ui
                 Action.Quality => T("Quality: {0}", info.Current != null ? QualityLabel(info.Current) : maxHeight + "p"),
                 Action.Loop => Loop ? T("Loop: on") : T("Loop: off"),
                 Action.Info => T("Description"),
+                Action.Share => T("Share"),
                 Action.Stats => T("Stats for nerds"),
                 _ => "",
             };
@@ -1418,6 +1433,14 @@ namespace OmegaTube.Ui
         public override bool OnKey(string key)
         {
             bool back = key == "XF86Back" || key == "Escape";
+            if (shareOverlay != null && shareOverlay.Visibility)
+            {
+                if (back || key == "Return")
+                {
+                    shareOverlay.Hide();
+                }
+                return true;
+            }
             if (key.StartsWith("XF86AudioRaise") || key.StartsWith("XF86AudioLower") || key.StartsWith("XF86AudioMute"))
             {
                 return true;   // volume: the TV handles it, the controls stay as they are
@@ -1670,6 +1693,9 @@ namespace OmegaTube.Ui
                 case Action.Info:
                     OpenInfo();
                     break;
+                case Action.Share:
+                    OpenShareQr();
+                    break;
                 case Action.Stats:
                     Widgets.SetVisible(statsLabel, !statsLabel.Visibility);
                     UpdateIndicators();
@@ -1856,32 +1882,173 @@ namespace OmegaTube.Ui
 
         private void OpenInfo()
         {
-            if (infoPanel == null)
+            EnsureInfoPanel();
+            infoTitle.Text = titleLabel.Text;
+            infoMeta.Text = ChannelLine();
+            if (details != null)
             {
-                infoPanel = Widgets.Rounded(new Color(0.07f, 0.07f, 0.07f, 0.96f), 1200, 900, Theme.PanelRadius);
-                infoPanel.Position = new Position(360, 90);
-                var clip = new View { Position = new Position(60, 50), Size = new Size(1080, 760), ClippingMode = ClippingModeType.ClipChildren };
-                infoPanel.Add(clip);
-                infoText = Widgets.Label("", Theme.BodySize, Theme.Text, 1080, 10000);
-                infoText.MultiLine = true;
-                infoText.Ellipsis = false;
-                infoText.VerticalAlignment = VerticalAlignment.Top;
-                clip.Add(infoText);
-                var hint = Widgets.Label(T("▲▼ scroll    Back close"), Theme.SmallSize, Theme.TextDim, 1080, 36);
-                hint.Position = new Position(60, 840);
-                infoPanel.Add(hint);
-                Root.Add(infoPanel);
+                string likes = details.Likes >= 0 ? FormatCount(details.Likes) : "?";
+                string dislikes = details.Dislikes >= 0 ? FormatCount(details.Dislikes) : "?";
+                infoSocial.Text = T("Like") + " " + likes + "   ·   " + T("Dislike") + " " + dislikes;
+                if (details.ChannelAvatar.Length > 0)
+                {
+                    infoAvatar.ResourceUrl = details.ChannelAvatar;
+                    infoAvatar.Show();
+                }
+                else
+                {
+                    infoAvatar.Hide();
+                }
             }
-            string title = titleLabel.Text;
+            else
+            {
+                infoSocial.Text = "";
+                infoAvatar.Hide();
+            }
+            UpdateInfoAutoplayLabel();
             string description = info.Description.Length > 0 ? info.Description : T("No description.");
-            infoText.Text = title + "\n" + ChannelLine() + "\n\n" + description;
+            if (description.Length > 1200)
+            {
+                description = description.Substring(0, 1200) + "…";
+            }
+            infoText.Text = description;
             infoScroll = 0;
             infoText.PositionY = 0;
+            infoAutoplayFocused = false;
+            infoRelatedFocus = -1;
+            RefreshInfoRelatedFocus();
             infoPanel.Show();
             tooltip.Hide();
             chrome.Hide();
             focus = Focus.Info;
             SyncSkipPill();
+            UiGuard.Fire("PlayerScreen.InfoRelated", LoadInfoRelated);
+        }
+
+        private void EnsureInfoPanel()
+        {
+            if (infoPanel != null)
+            {
+                return;
+            }
+            infoPanel = Widgets.Rounded(new Color(0.07f, 0.07f, 0.07f, 0.96f), 1200, 900, Theme.PanelRadius);
+            infoPanel.Position = new Position(360, 90);
+            infoAvatar = new ImageView { Size = new Size(64, 64), Position = new Position(60, 48), BackgroundColor = Theme.Surface };
+            Widgets.Round(infoAvatar, 32);
+            infoPanel.Add(infoAvatar);
+            infoTitle = Widgets.Label("", Theme.TitleSize - 4, Theme.Text, 980, 80);
+            infoTitle.MultiLine = true;
+            infoTitle.Position = new Position(140, 44);
+            infoPanel.Add(infoTitle);
+            infoMeta = Widgets.Label("", Theme.BodySize, Theme.TextDim, 980, 36);
+            infoMeta.Position = new Position(140, 120);
+            infoPanel.Add(infoMeta);
+            infoSocial = Widgets.Label("", Theme.BodySize, Theme.Text, 1080, 32);
+            infoSocial.Position = new Position(60, 168);
+            infoPanel.Add(infoSocial);
+            infoAutoplay = Widgets.Label("", Theme.BodySize, Theme.Text, 1080, 36);
+            infoAutoplay.Position = new Position(60, 208);
+            infoPanel.Add(infoAutoplay);
+            var descClip = new View { Position = new Position(60, 256), Size = new Size(1080, 220), ClippingMode = ClippingModeType.ClipChildren };
+            infoText = Widgets.Label("", Theme.BodySize, Theme.Text, 1080, 10000);
+            infoText.MultiLine = true;
+            infoText.Ellipsis = false;
+            infoText.VerticalAlignment = VerticalAlignment.Top;
+            descClip.Add(infoText);
+            infoPanel.Add(descClip);
+            var relatedHeading = Widgets.Label(T("Up next"), Theme.BodySize + 2, Theme.Text, 400);
+            relatedHeading.Position = new Position(60, 486);
+            infoPanel.Add(relatedHeading);
+            infoRelatedClip = new View { Position = new Position(60, 530), Size = new Size(1080, 280), ClippingMode = ClippingModeType.ClipChildren };
+            infoPanel.Add(infoRelatedClip);
+            var hint = Widgets.Label(T("▲▼ scroll   OK autoplay/related   Back close"), Theme.SmallSize, Theme.TextDim, 1080, 36);
+            hint.Position = new Position(60, 840);
+            infoPanel.Add(hint);
+            Root.Add(infoPanel);
+        }
+
+        private void UpdateInfoAutoplayLabel()
+        {
+            string state = App.Config.Player.Autoplay ? T("On") : T("Off");
+            infoAutoplay.Text = T("Autoplay") + ": " + state;
+            infoAutoplay.TextColor = infoAutoplayFocused ? Theme.Accent : Theme.Text;
+        }
+
+        private async Task LoadInfoRelated()
+        {
+            FeedPage page = await YouTube.Related(item.Id);
+            if (closing || page.Error != null || focus != Focus.Info)
+            {
+                return;
+            }
+            infoRelatedItems.Clear();
+            foreach (VideoItem v in page.Items)
+            {
+                if (infoRelatedItems.Count >= 8)
+                {
+                    break;
+                }
+                infoRelatedItems.Add(v);
+            }
+            foreach (TextLabel row in infoRelatedRows)
+            {
+                infoRelatedClip.Remove(row);
+                row.Dispose();
+            }
+            infoRelatedRows.Clear();
+            int y = 0;
+            foreach (VideoItem v in infoRelatedItems)
+            {
+                var row = Widgets.Label("▸ " + v.Title, Theme.BodySize, Theme.Text, 1060, 56);
+                row.MultiLine = true;
+                row.Position = new Position(0, y);
+                infoRelatedClip.Add(row);
+                infoRelatedRows.Add(row);
+                y += 62;
+            }
+            RefreshInfoRelatedFocus();
+        }
+
+        private void RefreshInfoRelatedFocus()
+        {
+            UpdateInfoAutoplayLabel();
+            for (int i = 0; i < infoRelatedRows.Count; i++)
+            {
+                infoRelatedRows[i].TextColor = i == infoRelatedFocus ? Theme.Accent : Theme.Text;
+            }
+        }
+
+        private void ToggleInfoAutoplay()
+        {
+            App.Config.Player.Autoplay = !App.Config.Player.Autoplay;
+            App.Config.Save();
+            UpdateInfoAutoplayLabel();
+            Toast(App.Config.Player.Autoplay ? T("Autoplay on") : T("Autoplay off"));
+        }
+
+        private void OpenShareQr()
+        {
+            if (shareOverlay == null)
+            {
+                shareOverlay = Widgets.Rounded(new Color(0.07f, 0.07f, 0.07f, 0.96f), 720, 820, Theme.PanelRadius);
+                shareOverlay.Position = new Position(600, 130);
+                var title = Widgets.Label(T("Share"), Theme.TitleSize, Theme.Text, 640);
+                title.HorizontalAlignment = HorizontalAlignment.Center;
+                title.Position = new Position(40, 36);
+                shareOverlay.Add(title);
+                shareQrHost = Widgets.Rounded(Color.White, 520, 520, 18);
+                shareQrHost.Position = new Position(100, 100);
+                shareOverlay.Add(shareQrHost);
+                var hint = Widgets.Label(T("Scan to open on a phone"), Theme.BodySize, Theme.TextDim, 640, 60);
+                hint.MultiLine = true;
+                hint.HorizontalAlignment = HorizontalAlignment.Center;
+                hint.Position = new Position(40, 640);
+                shareOverlay.Add(hint);
+                Root.Add(shareOverlay);
+            }
+            Widgets.DrawQr(shareQrHost, 520, YouTube.Qr("https://www.youtube.com/watch?v=" + item.Id));
+            shareOverlay.Show();
+            tooltip.Hide();
         }
 
         private void InfoKey(string key)
@@ -1889,14 +2056,73 @@ namespace OmegaTube.Ui
             switch (key)
             {
                 case "Up":
+                    if (infoRelatedFocus > 0)
+                    {
+                        infoRelatedFocus--;
+                        RefreshInfoRelatedFocus();
+                    }
+                    else if (infoRelatedFocus == 0)
+                    {
+                        infoRelatedFocus = -1;
+                        infoAutoplayFocused = true;
+                        RefreshInfoRelatedFocus();
+                    }
+                    else if (infoAutoplayFocused)
+                    {
+                        infoAutoplayFocused = false;
+                        RefreshInfoRelatedFocus();
+                    }
+                    else
+                    {
+                        float height = EstimateTextHeight(infoText.Text, 1080, Theme.BodySize);
+                        float min = Math.Min(0, 200 - height);
+                        infoScroll = Math.Max(min, Math.Min(0, infoScroll + 300));
+                        infoText.PositionY = infoScroll;
+                    }
+                    break;
                 case "Down":
-                    // NaturalSize is costly to keep: approximate the text height from its line count.
-                    float height = EstimateTextHeight(infoText.Text, 1080, Theme.BodySize);
-                    float min = Math.Min(0, 740 - height);
-                    infoScroll = Math.Max(min, Math.Min(0, infoScroll + (key == "Up" ? 300 : -300)));
-                    infoText.PositionY = infoScroll;
+                    if (infoAutoplayFocused)
+                    {
+                        infoAutoplayFocused = false;
+                        if (infoRelatedRows.Count > 0)
+                        {
+                            infoRelatedFocus = 0;
+                        }
+                        RefreshInfoRelatedFocus();
+                    }
+                    else if (infoRelatedFocus >= 0 && infoRelatedFocus < infoRelatedRows.Count - 1)
+                    {
+                        infoRelatedFocus++;
+                        RefreshInfoRelatedFocus();
+                    }
+                    else if (infoRelatedFocus < 0 && !infoAutoplayFocused)
+                    {
+                        infoAutoplayFocused = true;
+                        RefreshInfoRelatedFocus();
+                    }
+                    else
+                    {
+                        float height = EstimateTextHeight(infoText.Text, 1080, Theme.BodySize);
+                        float min = Math.Min(0, 200 - height);
+                        infoScroll = Math.Max(min, Math.Min(0, infoScroll - 300));
+                        infoText.PositionY = infoScroll;
+                    }
                     break;
                 case "Return":
+                    if (infoRelatedFocus >= 0 && infoRelatedFocus < infoRelatedItems.Count)
+                    {
+                        App.Replace(new PlayerScreen(App, infoRelatedItems[infoRelatedFocus]));
+                        return;
+                    }
+                    if (infoAutoplayFocused)
+                    {
+                        ToggleInfoAutoplay();
+                        break;
+                    }
+                    infoPanel.Hide();
+                    focus = Focus.Buttons;
+                    ShowChrome(Focus.Hidden);
+                    break;
                 case "XF86Back":
                 case "Escape":
                     infoPanel.Hide();
