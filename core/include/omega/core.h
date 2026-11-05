@@ -97,7 +97,7 @@ OMEGA_API void omega_player_destroy(omega_player* player);
 //   search:  {"items":[{"id","title","channel","duration","views","published","thumbnail","live"}],
 //             "continuation":"..."}  or {"error":"..."}
 //   suggest: {"suggestions":["..."]} or {"error":"..."}
-OMEGA_API char* omega_yt_search(const char* query, const char* continuation);
+OMEGA_API char* omega_yt_search(const char* query, const char* continuation, const char* filters_json);
 OMEGA_API char* omega_yt_suggest(const char* query);
 // Signed-in feed (TV client): browse_id FEwhat_to_watch | FEsubscriptions | FEhistory. Same JSON as search
 // (FEsubscriptions first page adds "highlights": YouTube's "most relevant" shelf, same item format);

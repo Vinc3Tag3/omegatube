@@ -17,6 +17,7 @@
 #include "player/player.h"
 #include "yt/auth.h"
 #include "yt/innertube.h"
+#include "yt/search_filter.h"
 #include "yt/js_solver.h"
 #include "yt/sponsorblock.h"
 #include "yt/watch.h"
@@ -358,6 +359,7 @@ nlohmann::json items_json(const std::vector<omega::yt::FeedItem>& list) {
                          {"verified", it.verified},
                          {"badge", it.badge},
                          {"itemCount", it.item_count}});
+        if (it.kind == "channel") items.back()["subscribers"] = it.views;
     return items;
 }
 
@@ -381,10 +383,16 @@ nlohmann::json feed_json(const omega::yt::Feed& feed) {
 
 }  // namespace
 
-char* omega_yt_search(const char* query, const char* continuation) {
+char* omega_yt_search(const char* query, const char* continuation, const char* filters_json) {
     omega::yt::Feed feed;
     std::string error;
-    if (!omega::yt::shared_client().search(query ? query : "", continuation ? continuation : "", feed, error))
+    std::string params;
+    if (filters_json && filters_json[0]) {
+        nlohmann::json fj = nlohmann::json::parse(filters_json, nullptr, false);
+        if (fj.is_object()) params = omega::yt::encode_search_filters(fj);
+    }
+    if (!omega::yt::shared_client().search(query ? query : "", continuation ? continuation : "", params, feed,
+                                           error))
         return to_c_json({{"error", error}});
     return to_c_json(feed_json(feed));
 }

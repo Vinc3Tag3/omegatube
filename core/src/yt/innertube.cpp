@@ -11,6 +11,7 @@
 #include "util/remote_config.h"
 #include "yt/auth.h"
 #include "yt/js_solver.h"
+#include "yt/search_filter.h"
 
 namespace omega::yt {
 namespace {
@@ -118,6 +119,19 @@ std::string avatar_from_renderer(const json& v) {
     if (const json* owner = find_key(v, "avatar"))
         return last_thumbnail(*owner);
     return "";
+}
+
+void parse_channel_renderer(const json& v, Feed& out) {
+    FeedItem item;
+    item.kind = "channel";
+    item.video_id = v.value("channelId", "");
+    if (item.video_id.empty()) return;
+    item.title = text_of(v.value("title", json::object()));
+    if (item.title.empty()) return;
+    item.channel_avatar = last_thumbnail(v.value("thumbnail", json::object()));
+    item.views = text_of(v.value("subscriberCountText", v.value("videoCountText", json::object())));
+    item.thumbnail = item.channel_avatar;
+    out.items.push_back(std::move(item));
 }
 
 void parse_video_renderer(const json& v, Feed& out) {
@@ -264,6 +278,8 @@ void collect(const json& j, Feed& out, Feed* highlights = nullptr) {
                 else collect(shelf, out, highlights);
             } else if (it.key() == "videoRenderer" || it.key() == "compactVideoRenderer") {
                 parse_video_renderer(it.value(), out);
+            } else if (it.key() == "channelRenderer") {
+                parse_channel_renderer(it.value(), out);
             } else if (it.key() == "lockupViewModel") {
                 parse_lockup(it.value(), out);
             } else if (it.key() == "playlistVideoRenderer") {
@@ -638,12 +654,14 @@ bool Client::player_with(const json& c, const std::string& video_id, VideoInfo& 
     return true;
 }
 
-bool Client::search(const std::string& query, const std::string& continuation, Feed& out, std::string& error) {
+bool Client::search(const std::string& query, const std::string& continuation, const std::string& filter_params,
+                    Feed& out, std::string& error) {
     if (!ensure_visitor(error)) return false;
     ClientDef def = client_def("search", visitor_data_, web_client_version_);
     json body = {{"context", {{"client", def.client}}}};
     if (continuation.empty()) {
         body["query"] = query;
+        if (!filter_params.empty()) body["params"] = filter_params;
     } else {
         body["continuation"] = continuation;
     }

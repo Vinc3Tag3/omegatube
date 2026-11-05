@@ -13,11 +13,56 @@ namespace OmegaTube.Data
 
         private static string dir;
         private static Dictionary<string, object> positions;
+        private static List<string> recentSearches = new List<string>();
 
         public static void Init(string dataDir)
         {
             dir = dataDir;
             positions = ReadJson("positions.json") as Dictionary<string, object> ?? new Dictionary<string, object>();
+            var loaded = ReadJson("recent-searches.json") as List<object>;
+            recentSearches = new List<string>();
+            if (loaded != null)
+            {
+                foreach (object o in loaded)
+                {
+                    if (o is string s && s.Length > 0)
+                    {
+                        recentSearches.Add(s);
+                    }
+                }
+            }
+        }
+
+        public static IReadOnlyList<string> RecentSearches => recentSearches;
+
+        public static void AddRecentSearch(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return;
+            }
+            query = query.Trim();
+            recentSearches.Remove(query);
+            recentSearches.Insert(0, query);
+            while (recentSearches.Count > 10)
+            {
+                recentSearches.RemoveAt(recentSearches.Count - 1);
+            }
+            WriteJson("recent-searches.json", recentSearches);
+        }
+
+        public static void RemoveRecentSearch(string query)
+        {
+            if (recentSearches.Remove(query))
+            {
+                WriteJson("recent-searches.json", recentSearches);
+            }
+        }
+
+        public static void ClearRecentSearches()
+        {
+            recentSearches.Clear();
+            WriteJson("recent-searches.json", recentSearches);
         }
 
         // ---- feed cache ----

@@ -102,15 +102,15 @@ description: "Task list for YouTube UI parity feature"
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Encoder filtres recherche (date, duration, type, sort, live, hd, subtitles) en protobuf dans `core/src/yt/innertube.cpp` ; étendre `Client::search` et `omega_yt_search` dans `core/include/omega/core.h` / `core/src/core.cpp` avec argument JSON filtres (`null` = aucun)
-- [ ] T029 [US3] Parser résultats `kind: channel` dans `core/src/yt/innertube.cpp` et les exposer dans le JSON recherche
-- [ ] T030 [P] [US3] `NativeCore.YtSearch` + surcharge filtres et mapping dans `app/OmegaTube/Data/YouTube.cs`
-- [ ] T031 [US3] Persister `recent-searches.json` (max 10, antéchronologique, retirer une entrée / vider) dans `app/OmegaTube/Data/LocalStore.cs`
-- [ ] T032 [US3] Refondre layout `app/OmegaTube/Ui/SearchScreen.cs` : recherches récentes → suggestions → clavier ; après recherche, masquer clavier et `FeedGrid` pleine hauteur ; bouton modifier requête
-- [ ] T033 [US3] UI filtres cumulables + état « aucun filtre » dans `app/OmegaTube/Ui/SearchScreen.cs` ; message zéro résultat
-- [ ] T034 [US3] Carte chaîne et navigation vers `ChannelScreen` ; playlist → `PlaylistScreen` ; vidéo → lecteur dans `app/OmegaTube/Ui/SearchScreen.cs` / `FeedRow`
-- [ ] T035 [P] [US3] Libellés filtres et recherches récentes dans `app/OmegaTube/I18n.cs`
-- [ ] T036 [US3] Commande `ytcheck --search "<q>" --duration long` (ou flags équivalents) dans `core/tools/ytcheck.cpp`
+- [x] T028 [US3] Encoder filtres recherche (date, duration, type, sort, live, hd, subtitles) en protobuf dans `core/src/yt/innertube.cpp` ; étendre `Client::search` et `omega_yt_search` dans `core/include/omega/core.h` / `core/src/core.cpp` avec argument JSON filtres (`null` = aucun)
+- [x] T029 [US3] Parser résultats `kind: channel` dans `core/src/yt/innertube.cpp` et les exposer dans le JSON recherche
+- [x] T030 [P] [US3] `NativeCore.YtSearch` + surcharge filtres et mapping dans `app/OmegaTube/Data/YouTube.cs`
+- [x] T031 [US3] Persister `recent-searches.json` (max 10, antéchronologique, retirer une entrée / vider) dans `app/OmegaTube/Data/LocalStore.cs`
+- [x] T032 [US3] Refondre layout `app/OmegaTube/Ui/SearchScreen.cs` : recherches récentes → suggestions → clavier ; après recherche, masquer clavier et `FeedGrid` pleine hauteur ; bouton modifier requête
+- [x] T033 [US3] UI filtres cumulables + état « aucun filtre » dans `app/OmegaTube/Ui/SearchScreen.cs` ; message zéro résultat
+- [x] T034 [US3] Carte chaîne et navigation vers `ChannelScreen` ; playlist → `PlaylistScreen` ; vidéo → lecteur dans `app/OmegaTube/Ui/SearchScreen.cs` / `FeedRow`
+- [x] T035 [P] [US3] Libellés filtres et recherches récentes dans `app/OmegaTube/I18n.cs`
+- [x] T036 [US3] Commande `ytcheck --search "<q>" --duration long` (ou flags équivalents) dans `core/tools/ytcheck.cpp`
 
 **Checkpoint**: Recherche indépendante de l’accueil enrichi.
 
