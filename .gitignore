@@ -13,3 +13,5 @@ omegatube-auth.json
 app/OmegaTube/.tizen-rds/
 # Tizen Studio backup manifest
 app/OmegaTube/tizen-manifest.xml-E
+
+graphify-out/
