@@ -97,7 +97,7 @@ OMEGA_API void omega_player_destroy(omega_player* player);
 //   search:  {"items":[{"id","title","channel","duration","views","published","thumbnail","live"}],
 //             "continuation":"..."}  or {"error":"..."}
 //   suggest: {"suggestions":["..."]} or {"error":"..."}
-OMEGA_API char* omega_yt_search(const char* query, const char* continuation);
+OMEGA_API char* omega_yt_search(const char* query, const char* continuation, const char* filters_json);
 OMEGA_API char* omega_yt_suggest(const char* query);
 // Signed-in feed (TV client): browse_id FEwhat_to_watch | FEsubscriptions | FEhistory. Same JSON as search
 // (FEsubscriptions first page adds "highlights": YouTube's "most relevant" shelf, same item format);
@@ -122,6 +122,9 @@ OMEGA_API char* omega_yt_details(const char* video_id);
 // As the signed-in account: rating "like" | "dislike" | "none"; (un)subscribe. {"ok":true} or {"error"}.
 OMEGA_API char* omega_yt_rate(const char* video_id, const char* rating);
 OMEGA_API char* omega_yt_subscribe(const char* channel_id, int subscribe);
+// Signed-in library / feedback / notifications. JSON request (see contracts/shell-json.md):
+// {"ok":true} or {"ok":true,"playlistId":"..."} or {"error":"..."}.
+OMEGA_API char* omega_yt_account_action(const char* action_json);
 // A channel's videos (newest first): same JSON as search plus "title","avatar","subscribers" (first page).
 OMEGA_API char* omega_yt_channel(const char* channel_id, const char* continuation);
 // Subtitles: a caption track URL (from omega_player_formats), machine-translated to translate_to when not

@@ -83,12 +83,12 @@ description: "Task list for YouTube UI parity feature"
 
 ### Implementation for User Story 2
 
-- [ ] T022 [US2] Ajouter panneau « Informations » dans `app/OmegaTube/Ui/PlayerScreen.cs` : titre, ligne chaîne (avatar, abonnés), abonnement, like/dislike avec compteurs RYD, aperçu description, sans mettre en pause la vidéo
-- [ ] T023 [US2] Remplacer la rangée horizontale de suggestions par liste verticale « À suivre » (≥3 entrées si disponibles) dans le panneau infos de `app/OmegaTube/Ui/PlayerScreen.cs`, alimentée par `YouTube.Related` existant
-- [ ] T024 [US2] Interrupteur « Lecture automatique » dans le panneau infos lié à `AppConfig.Player.Autoplay` dans `app/OmegaTube/Config/AppConfig.cs` et persistance via `AppConfig.Save`
-- [ ] T025 [US2] Grande carte « À suivre » + compte à rebours annulable en fin de VOD dans `app/OmegaTube/Ui/PlayerScreen.cs` ; respecter autoplay off (aucune suite) ; direct sans compte à rebours replay
-- [ ] T026 [P] [US2] Action Partager : QR `https://www.youtube.com/watch?v=` via `NativeCore.QrEncode` / flux existant dans `app/OmegaTube/Ui/PlayerScreen.cs`
-- [ ] T027 [P] [US2] Libellés I18n panneau infos, autoplay, carte fin, partager dans `app/OmegaTube/I18n.cs`
+- [x] T022 [US2] Ajouter panneau « Informations » dans `app/OmegaTube/Ui/PlayerScreen.cs` : titre, ligne chaîne (avatar, abonnés), abonnement, like/dislike avec compteurs RYD, aperçu description, sans mettre en pause la vidéo
+- [x] T023 [US2] Remplacer la rangée horizontale de suggestions par liste verticale « À suivre » (≥3 entrées si disponibles) dans le panneau infos de `app/OmegaTube/Ui/PlayerScreen.cs`, alimentée par `YouTube.Related` existant
+- [x] T024 [US2] Interrupteur « Lecture automatique » dans le panneau infos lié à `AppConfig.Player.Autoplay` dans `app/OmegaTube/Config/AppConfig.cs` et persistance via `AppConfig.Save`
+- [x] T025 [US2] Grande carte « À suivre » + compte à rebours annulable en fin de VOD dans `app/OmegaTube/Ui/PlayerScreen.cs` ; respecter autoplay off (aucune suite) ; direct sans compte à rebours replay
+- [x] T026 [P] [US2] Action Partager : QR `https://www.youtube.com/watch?v=` via `NativeCore.QrEncode` / flux existant dans `app/OmegaTube/Ui/PlayerScreen.cs`
+- [x] T027 [P] [US2] Libellés I18n panneau infos, autoplay, carte fin, partager dans `app/OmegaTube/I18n.cs`
 
 **Checkpoint**: US1 + US2 — lecture avec contexte site testable seule.
 
@@ -102,15 +102,15 @@ description: "Task list for YouTube UI parity feature"
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Encoder filtres recherche (date, duration, type, sort, live, hd, subtitles) en protobuf dans `core/src/yt/innertube.cpp` ; étendre `Client::search` et `omega_yt_search` dans `core/include/omega/core.h` / `core/src/core.cpp` avec argument JSON filtres (`null` = aucun)
-- [ ] T029 [US3] Parser résultats `kind: channel` dans `core/src/yt/innertube.cpp` et les exposer dans le JSON recherche
-- [ ] T030 [P] [US3] `NativeCore.YtSearch` + surcharge filtres et mapping dans `app/OmegaTube/Data/YouTube.cs`
-- [ ] T031 [US3] Persister `recent-searches.json` (max 10, antéchronologique, retirer une entrée / vider) dans `app/OmegaTube/Data/LocalStore.cs`
-- [ ] T032 [US3] Refondre layout `app/OmegaTube/Ui/SearchScreen.cs` : recherches récentes → suggestions → clavier ; après recherche, masquer clavier et `FeedGrid` pleine hauteur ; bouton modifier requête
-- [ ] T033 [US3] UI filtres cumulables + état « aucun filtre » dans `app/OmegaTube/Ui/SearchScreen.cs` ; message zéro résultat
-- [ ] T034 [US3] Carte chaîne et navigation vers `ChannelScreen` ; playlist → `PlaylistScreen` ; vidéo → lecteur dans `app/OmegaTube/Ui/SearchScreen.cs` / `FeedRow`
-- [ ] T035 [P] [US3] Libellés filtres et recherches récentes dans `app/OmegaTube/I18n.cs`
-- [ ] T036 [US3] Commande `ytcheck --search "<q>" --duration long` (ou flags équivalents) dans `core/tools/ytcheck.cpp`
+- [x] T028 [US3] Encoder filtres recherche (date, duration, type, sort, live, hd, subtitles) en protobuf dans `core/src/yt/innertube.cpp` ; étendre `Client::search` et `omega_yt_search` dans `core/include/omega/core.h` / `core/src/core.cpp` avec argument JSON filtres (`null` = aucun)
+- [x] T029 [US3] Parser résultats `kind: channel` dans `core/src/yt/innertube.cpp` et les exposer dans le JSON recherche
+- [x] T030 [P] [US3] `NativeCore.YtSearch` + surcharge filtres et mapping dans `app/OmegaTube/Data/YouTube.cs`
+- [x] T031 [US3] Persister `recent-searches.json` (max 10, antéchronologique, retirer une entrée / vider) dans `app/OmegaTube/Data/LocalStore.cs`
+- [x] T032 [US3] Refondre layout `app/OmegaTube/Ui/SearchScreen.cs` : recherches récentes → suggestions → clavier ; après recherche, masquer clavier et `FeedGrid` pleine hauteur ; bouton modifier requête
+- [x] T033 [US3] UI filtres cumulables + état « aucun filtre » dans `app/OmegaTube/Ui/SearchScreen.cs` ; message zéro résultat
+- [x] T034 [US3] Carte chaîne et navigation vers `ChannelScreen` ; playlist → `PlaylistScreen` ; vidéo → lecteur dans `app/OmegaTube/Ui/SearchScreen.cs` / `FeedRow`
+- [x] T035 [P] [US3] Libellés filtres et recherches récentes dans `app/OmegaTube/I18n.cs`
+- [x] T036 [US3] Commande `ytcheck --search "<q>" --duration long` (ou flags équivalents) dans `core/tools/ytcheck.cpp`
 
 **Checkpoint**: Recherche indépendante de l’accueil enrichi.
 
@@ -124,15 +124,15 @@ description: "Task list for YouTube UI parity feature"
 
 ### Implementation for User Story 4
 
-- [ ] T037 [US4] Implémenter `omega_yt_account_action` dans `core/include/omega/core.h`, `core/src/core.cpp`, `core/src/yt/innertube.cpp` (`addToPlaylist`, `createPlaylist`, `feedback`, `notification`) selon [contracts/shell-json.md](contracts/shell-json.md)
-- [ ] T038 [US4] Parser `groups[]` et `commands` pause/clear pour `FEhistory` dans `core/src/yt/innertube.cpp` ; conserver `items` plat pour cache
-- [ ] T039 [P] [US4] P/Invoke et wrappers `YouTube.AccountAction`, `YouTube.HistoryGroups` dans `app/OmegaTube/NativeCore.cs` et `app/OmegaTube/Data/YouTube.cs`
-- [ ] T040 [US4] Créer `app/OmegaTube/Ui/YouScreen.cs` : entrées Historique, À regarder plus tard (`WL`), Vidéos aimées (`LL`), Playlists (`FElibrary`) ; intégrer au rail via `app/OmegaTube/Ui/HomeScreen.cs`
-- [ ] T041 [US4] Vue historique groupée + recherche interne + retirer une entrée + pause + effacement confirmé dans `app/OmegaTube/Ui/FeedGrid.cs` ou composant dédié sous `app/OmegaTube/Ui/`
-- [ ] T042 [US4] Abonnements : bande avatars (chaînes guide, voir US5 T046 si guide pas prêt — stub liste vide) + flux chronologique `FEsubscriptions` `items` + filtres Tout / Non vues / En direct dans `app/OmegaTube/Ui/HomeScreen.cs` / `FeedGrid.cs`
-- [ ] T043 [US4] Menu carte (maintien touche) : WL, enregistrer playlist, Pas intéressé, Ne plus recommander, file ; appliquer `SessionHide` + appels compte dans `app/OmegaTube/Ui/FeedGrid.cs` ; sans compte = message connexion, pas de succès fictif
-- [ ] T044 [P] [US4] Libellés bibliothèque, historique, menu carte dans `app/OmegaTube/I18n.cs`
-- [ ] T045 [US4] Étendre `ytcheck` : `--playlist-page WL`, `--playlist-page LL` après `--signin` dans `core/tools/ytcheck.cpp`
+- [x] T037 [US4] Implémenter `omega_yt_account_action` dans `core/include/omega/core.h`, `core/src/core.cpp`, `core/src/yt/innertube.cpp` (`addToPlaylist`, `createPlaylist`, `feedback`, `notification`) selon [contracts/shell-json.md](contracts/shell-json.md)
+- [x] T038 [US4] Parser `groups[]` et `commands` pause/clear pour `FEhistory` dans `core/src/yt/innertube.cpp` ; conserver `items` plat pour cache
+- [x] T039 [P] [US4] P/Invoke et wrappers `YouTube.AccountAction`, `YouTube.HistoryGroups` dans `app/OmegaTube/NativeCore.cs` et `app/OmegaTube/Data/YouTube.cs`
+- [x] T040 [US4] Créer `app/OmegaTube/Ui/YouScreen.cs` : entrées Historique, À regarder plus tard (`WL`), Vidéos aimées (`LL`), Playlists (`FElibrary`) ; intégrer au rail via `app/OmegaTube/Ui/HomeScreen.cs`
+- [x] T041 [US4] Vue historique groupée + recherche interne + retirer une entrée + pause + effacement confirmé dans `app/OmegaTube/Ui/FeedGrid.cs` ou composant dédié sous `app/OmegaTube/Ui/`
+- [x] T042 [US4] Abonnements : bande avatars (chaînes guide, voir US5 T046 si guide pas prêt — stub liste vide) + flux chronologique `FEsubscriptions` `items` + filtres Tout / Non vues / En direct dans `app/OmegaTube/Ui/HomeScreen.cs` / `FeedGrid.cs`
+- [x] T043 [US4] Menu carte (maintien touche) : WL, enregistrer playlist, Pas intéressé, Ne plus recommander, file ; appliquer `SessionHide` + appels compte dans `app/OmegaTube/Ui/FeedGrid.cs` ; sans compte = message connexion, pas de succès fictif
+- [x] T044 [P] [US4] Libellés bibliothèque, historique, menu carte dans `app/OmegaTube/I18n.cs`
+- [x] T045 [US4] Étendre `ytcheck` : `--playlist-page WL`, `--playlist-page LL` après `--signin` dans `core/tools/ytcheck.cpp`
 
 **Checkpoint**: Parcours compte bibliothèque + menu carte.
 

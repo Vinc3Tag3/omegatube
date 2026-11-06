@@ -17,6 +17,7 @@
 #include "player/player.h"
 #include "yt/auth.h"
 #include "yt/innertube.h"
+#include "yt/search_filter.h"
 #include "yt/js_solver.h"
 #include "yt/sponsorblock.h"
 #include "yt/watch.h"
@@ -342,22 +343,30 @@ char* to_c_json(const nlohmann::json& j) {
 
 nlohmann::json items_json(const std::vector<omega::yt::FeedItem>& list) {
     nlohmann::json items = nlohmann::json::array();
-    for (const auto& it : list)
-        items.push_back({{"id", it.video_id},
-                         {"title", it.title},
-                         {"channel", it.channel},
-                         {"duration", it.duration},
-                         {"views", it.views},
-                         {"published", it.published},
-                         {"thumbnail", it.thumbnail},
-                         {"live", it.is_live},
-                         {"watched", it.watched_percent},
-                         {"playlistId", it.playlist_id},
-                         {"kind", it.kind},
-                         {"channelAvatar", it.channel_avatar},
-                         {"verified", it.verified},
-                         {"badge", it.badge},
-                         {"itemCount", it.item_count}});
+    for (const auto& it : list) {
+        nlohmann::json o = {{"id", it.video_id},
+                            {"title", it.title},
+                            {"channel", it.channel},
+                            {"duration", it.duration},
+                            {"views", it.views},
+                            {"published", it.published},
+                            {"thumbnail", it.thumbnail},
+                            {"live", it.is_live},
+                            {"watched", it.watched_percent},
+                            {"playlistId", it.playlist_id},
+                            {"kind", it.kind},
+                            {"channelAvatar", it.channel_avatar},
+                            {"verified", it.verified},
+                            {"badge", it.badge},
+                            {"itemCount", it.item_count}};
+        if (it.kind == "channel") o["subscribers"] = it.views;
+        if (!it.fb_not_interested.empty() || !it.fb_dont_recommend.empty() || !it.fb_remove_history.empty()) {
+            o["feedback"] = {{"notInterested", it.fb_not_interested},
+                             {"dontRecommend", it.fb_dont_recommend},
+                             {"removeHistory", it.fb_remove_history}};
+        }
+        items.push_back(std::move(o));
+    }
     return items;
 }
 
@@ -376,15 +385,30 @@ nlohmann::json feed_json(const omega::yt::Feed& feed) {
             chips.push_back({{"id", c.id}, {"label", c.label}, {"browseId", c.browse_id}});
         j["chips"] = chips;
     }
+    if (!feed.groups.empty()) {
+        nlohmann::json groups = nlohmann::json::array();
+        for (const auto& g : feed.groups)
+            groups.push_back({{"title", g.title}, {"items", items_json(g.items)}});
+        j["groups"] = groups;
+    }
+    if (!feed.history_pause_token.empty() || !feed.history_clear_token.empty()) {
+        j["commands"] = {{"pause", feed.history_pause_token}, {"clear", feed.history_clear_token}};
+    }
     return j;
 }
 
 }  // namespace
 
-char* omega_yt_search(const char* query, const char* continuation) {
+char* omega_yt_search(const char* query, const char* continuation, const char* filters_json) {
     omega::yt::Feed feed;
     std::string error;
-    if (!omega::yt::shared_client().search(query ? query : "", continuation ? continuation : "", feed, error))
+    std::string params;
+    if (filters_json && filters_json[0]) {
+        nlohmann::json fj = nlohmann::json::parse(filters_json, nullptr, false);
+        if (fj.is_object()) params = omega::yt::encode_search_filters(fj);
+    }
+    if (!omega::yt::shared_client().search(query ? query : "", continuation ? continuation : "", params, feed,
+                                           error))
         return to_c_json({{"error", error}});
     return to_c_json(feed_json(feed));
 }
@@ -492,6 +516,18 @@ char* omega_yt_subscribe(const char* channel_id, int subscribe) {
     return account_action([&](const std::string& token, std::string& error) {
         return omega::yt::set_subscribed(id, subscribe != 0, token, error);
     });
+}
+
+char* omega_yt_account_action(const char* action_json) {
+    std::string error;
+    std::string token = omega::yt::shared_auth().access_token(error);
+    if (token.empty()) return to_c_json({{"error", error.empty() ? "signed out" : error}});
+    nlohmann::json req = nlohmann::json::parse(action_json ? action_json : "{}", nullptr, false);
+    if (!req.is_object()) return to_c_json({{"error", "invalid json"}});
+    nlohmann::json out;
+    if (!omega::yt::account_action(req, token, out, error)) return to_c_json({{"error", error}});
+    out["ok"] = true;
+    return to_c_json(out);
 }
 
 char* omega_yt_channel(const char* channel_id, const char* continuation) {

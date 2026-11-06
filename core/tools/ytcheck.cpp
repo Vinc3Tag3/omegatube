@@ -2,7 +2,7 @@
 //   ytcheck --get <url>          HTTPS sanity check (prints status + size)
 //   ytcheck --sb <videoId>        SponsorBlock segments
 //   ytcheck --signin              Google device-flow sign-in, then signed-in home + subscriptions
-//   ytcheck --search <query>     search results + suggestions
+//   ytcheck --playlist-page WL|LL   library lists (use after --signin for account playlists)
 //   ytcheck --captions <videoId> [lang] [tlang]  caption tracks, then the first cues of the `lang` track
 //                                (default: the first one), machine-translated to tlang if given
 //   ytcheck --account            name / handle / photo of the account of a previous --signin
@@ -29,6 +29,7 @@
 #include "yt/sponsorblock.h"
 #include "yt/innertube.h"
 #include "yt/js_solver.h"
+#include "yt/search_filter.h"
 #include "yt/selfcheck.h"
 
 using Clock = std::chrono::steady_clock;
@@ -89,8 +90,14 @@ int main(int argc, char** argv) {
     if (argc >= 3 && strcmp(argv[1], "--search") == 0) {
         omega::yt::Client client;
         omega::yt::Feed feed;
-        std::string error;
-        if (!client.search(argv[2], "", feed, error)) {
+        std::string error, params;
+        for (int i = 3; i + 1 < argc; ++i) {
+            if (strcmp(argv[i], "--duration") == 0) {
+                params = omega::yt::encode_search_filters({{"duration", argv[i + 1]}});
+                ++i;
+            }
+        }
+        if (!client.search(argv[2], "", params, feed, error)) {
             printf("search failed: %s\n", error.c_str());
             return 1;
         }
@@ -208,7 +215,7 @@ int main(int argc, char** argv) {
         bool ok;
         if (argv[1][7] == 's') {
             omega::yt::Feed feed;
-            ok = client.search(argv[2], "", feed, error);
+            ok = client.search(argv[2], "", "", feed, error);
         } else if (argv[1][7] == 'p') {
             omega::yt::VideoInfo info;
             ok = client.player(argv[2], info, error);

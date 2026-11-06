@@ -14,5 +14,7 @@ namespace OmegaTube.Ui
         void Wake();   // shown again: resume filling its cards
         bool LoadFailed { get; }
         void RetryLoad();
+        // Second Return on the same card opens the action menu (see screens contract).
+        bool OnReturnPress();
     }
 }

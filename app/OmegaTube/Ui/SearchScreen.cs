@@ -1,17 +1,16 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using OmegaTube.Config;
+using OmegaTube.Data;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
 using static OmegaTube.I18n;
 
 namespace OmegaTube.Ui
 {
-    // On-screen keyboard in the app language's layout (QWERTY, AZERTY, Spanish QWERTY with ñ), with a second
-    // page of accents and symbols, + live suggestions + one row of results.
+    // Keyboard (app layout) + recent searches + suggestions; after search, full-height FeedGrid + filters.
     public class SearchScreen : Screen
     {
-        // Four rows of ten characters per layout; the action row comes below.
         private static readonly string[][] Qwerty =
         {
             new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" },
@@ -44,20 +43,37 @@ namespace OmegaTube.Ui
         private const int CharRows = 4, ActionRow = 4, ActionKeys = 5;
         private const int KeyW = 86, KeyH = 72, KeyGap = 8;
         private const int KbX = 80, KbY = 190;
+        private const int RightX = 1060;
+        private const int ResultTop = 200;
+        private const int FilterCount = 8;
 
-        private enum Zone { Keyboard, Suggestions, AddButton, Results }
+        private enum Zone { Keyboard, Recent, Suggestions, AddButton, Filters, Results, EditQuery }
 
         private readonly TextLabel queryLabel;
         private readonly TextLabel addButton;
+        private readonly View composePanel;
+        private readonly View resultPanel;
+        private readonly TextLabel resultQueryLabel;
+        private readonly TextLabel editQueryBtn;
+        private readonly View filterHost;
+        private readonly List<TextLabel> filterPills = new List<TextLabel>();
+        private readonly FeedGrid resultGrid;
         private readonly List<List<TextLabel>> keyLabels = new List<List<TextLabel>>();
+        private readonly TextLabel recentTitle;
+        private readonly List<TextLabel> recentLabels = new List<TextLabel>();
+        private readonly TextLabel sugTitle;
         private readonly List<TextLabel> suggestionLabels = new List<TextLabel>();
-        private readonly View resultsHost;
+
         private List<string> suggestions = new List<string>();
-        private FeedRow results;
         private string query = "";
+        private string lastQuery = "";
+        private readonly SearchFilters filters = new SearchFilters();
+        private bool resultMode;
         private Zone zone = Zone.Keyboard;
         private int keyRow = 1, keyCol;
+        private int recentIndex;
         private int suggestionIndex;
+        private int filterIndex;
         private int suggestGeneration;
         private bool symbolPage;
         private string[][] Layout => symbolPage ? Symbols
@@ -67,9 +83,15 @@ namespace OmegaTube.Ui
         {
             Root.BackgroundColor = Theme.Background;
 
+            composePanel = new View { Size = new Size(1920, 1080) };
+            resultPanel = new View { Size = new Size(1920, 1080) };
+            resultPanel.Hide();
+            Root.Add(composePanel);
+            Root.Add(resultPanel);
+
             var box = Widgets.Box(Theme.Surface, 900, 80);
             box.Position = new Position(KbX, 70);
-            Root.Add(box);
+            composePanel.Add(box);
             queryLabel = Widgets.Label("", Theme.TitleSize, Theme.Text, 860, 80);
             queryLabel.Position = new Position(20, 0);
             queryLabel.VerticalAlignment = VerticalAlignment.Center;
@@ -79,7 +101,7 @@ namespace OmegaTube.Ui
             addButton.Position = new Position(KbX + 930, 86);
             addButton.BackgroundColor = Theme.Surface;
             addButton.Hide();
-            Root.Add(addButton);
+            composePanel.Add(addButton);
 
             for (int r = 0; r <= ActionRow; r++)
             {
@@ -88,14 +110,13 @@ namespace OmegaTube.Ui
                 int count = r == ActionRow ? ActionKeys : 10;
                 for (int c = 0; c < count; c++)
                 {
-                    // The action row has 5 wide keys spanning the 10 columns.
                     int w = r == ActionRow ? (10 * (KeyW + KeyGap) - KeyGap - (ActionKeys - 1) * KeyGap) / ActionKeys : KeyW;
                     var key = Widgets.Label("", r == ActionRow ? Theme.BodySize + 1 : Theme.BodySize + 4, Theme.Text, w, KeyH);
                     key.HorizontalAlignment = HorizontalAlignment.Center;
                     key.VerticalAlignment = VerticalAlignment.Center;
                     key.BackgroundColor = Theme.Surface;
                     key.Position = new Position(x, KbY + r * (KeyH + KeyGap));
-                    Root.Add(key);
+                    composePanel.Add(key);
                     line.Add(key);
                     x += w + KeyGap;
                 }
@@ -103,23 +124,88 @@ namespace OmegaTube.Ui
             }
             LabelKeys();
 
-            var sugTitle = Widgets.Label(T("Suggestions"), Theme.BodySize, Theme.TextDim, 700);
-            sugTitle.Position = new Position(1060, 190);
-            Root.Add(sugTitle);
+            recentTitle = Widgets.Label(T("Recent searches"), Theme.BodySize, Theme.TextDim, 780);
+            recentTitle.Position = new Position(RightX, 190);
+            composePanel.Add(recentTitle);
+            for (int i = 0; i < 7; i++)
+            {
+                var r = Widgets.Label("", Theme.BodySize + 2, Theme.Text, 780, 50);
+                r.Position = new Position(RightX, 240 + i * 54);
+                r.VerticalAlignment = VerticalAlignment.Center;
+                composePanel.Add(r);
+                recentLabels.Add(r);
+            }
+
+            sugTitle = Widgets.Label(T("Suggestions"), Theme.BodySize, Theme.TextDim, 780);
+            sugTitle.Position = new Position(RightX, 580);
+            composePanel.Add(sugTitle);
             for (int i = 0; i < 7; i++)
             {
                 var s = Widgets.Label("", Theme.BodySize + 2, Theme.Text, 780, 50);
-                s.Position = new Position(1060, 240 + i * 54);
+                s.Position = new Position(RightX, 630 + i * 54);
                 s.VerticalAlignment = VerticalAlignment.Center;
-                Root.Add(s);
+                composePanel.Add(s);
                 suggestionLabels.Add(s);
             }
 
-            resultsHost = new View { Position = new Position(KbX - Theme.FocusMargin, 610), Size = new Size(1920 - KbX + Theme.FocusMargin, 470),
-                                     ClippingMode = ClippingModeType.ClipChildren };
-            Root.Add(resultsHost);
+            resultQueryLabel = Widgets.Label("", Theme.TitleSize, Theme.Text, 1200, 80);
+            resultQueryLabel.Position = new Position(KbX, 70);
+            resultQueryLabel.VerticalAlignment = VerticalAlignment.Center;
+            resultPanel.Add(resultQueryLabel);
+
+            editQueryBtn = Widgets.Label("  " + T("Edit search") + "  ", Theme.BodySize, Theme.Text, 0, 0);
+            editQueryBtn.Position = new Position(KbX + 1220, 86);
+            editQueryBtn.BackgroundColor = Theme.Surface;
+            resultPanel.Add(editQueryBtn);
+
+            filterHost = new View { Position = new Position(KbX, 150), Size = new Size(1760, 44) };
+            resultPanel.Add(filterHost);
+            for (int i = 0; i < FilterCount; i++)
+            {
+                var pill = Widgets.Label("", Theme.BodySize - 2, Theme.Text, 0, 40);
+                pill.BackgroundColor = Theme.Surface;
+                filterHost.Add(pill);
+                filterPills.Add(pill);
+            }
+
+            resultGrid = new FeedGrid(1760, 1080 - ResultTop - 40);
+            resultGrid.Position = new Position(KbX - Theme.FocusMargin, ResultTop);
+            resultPanel.Add(resultGrid);
+
             UpdateFocus();
         }
+
+        public override void OnShow()
+        {
+            RefreshRecent();
+            UpdateFocus();
+        }
+
+        private void RefreshRecent()
+        {
+            IReadOnlyList<string> list = LocalStore.RecentSearches;
+            recentTitle.Show();
+            for (int i = 0; i < recentLabels.Count; i++)
+            {
+                if (i < list.Count)
+                {
+                    recentLabels[i].Text = "  " + list[i];
+                    recentLabels[i].Show();
+                }
+                else
+                {
+                    recentLabels[i].Text = "";
+                    recentLabels[i].Hide();
+                }
+            }
+            if (list.Count == 0)
+            {
+                recentTitle.Hide();
+            }
+        }
+
+        private int RecentCount => System.Math.Min(LocalStore.RecentSearches.Count, recentLabels.Count);
+        private int SuggestionCount => System.Math.Min(suggestions.Count, suggestionLabels.Count);
 
         private void LabelKeys()
         {
@@ -139,32 +225,176 @@ namespace OmegaTube.Ui
             actions[(int)KeyAction.Search].Text = T("Search");
         }
 
-        private int SuggestionCount => System.Math.Min(suggestions.Count, suggestionLabels.Count);
+        private void LayoutFilterPills()
+        {
+            const int pillW = 220;
+            for (int i = 0; i < filterPills.Count; i++)
+            {
+                var pill = filterPills[i];
+                pill.Text = "  " + FilterCaption(i) + "  ";
+                pill.Size = new Size(pillW, 40);
+                pill.Position = new Position(i * (pillW + 12), 0);
+            }
+        }
+
+        private string FilterCaption(int i)
+        {
+            switch (i)
+            {
+                case 0:
+                    return filters.IsDefault ? T("All filters") : T("Reset filters");
+                case 1:
+                    return T("Duration: {0}", T("filter_duration_" + filters.Duration));
+                case 2:
+                    return T("Upload date: {0}", T("filter_date_" + filters.Date));
+                case 3:
+                    return T("Type: {0}", T("filter_type_" + filters.Type));
+                case 4:
+                    return T("Sort: {0}", T("filter_sort_" + filters.Sort));
+                case 5:
+                    return filters.Live ? T("Live on") : T("Live off");
+                case 6:
+                    return filters.Hd ? T("HD on") : T("HD off");
+                default:
+                    return filters.Subtitles ? T("Subtitles on") : T("Subtitles off");
+            }
+        }
+
+        private void ApplyFilterAction(int i)
+        {
+            if (i == 0)
+            {
+                filters.Date = filters.Duration = filters.Type = "any";
+                filters.Sort = "relevance";
+                filters.Live = filters.Hd = filters.Subtitles = false;
+            }
+            else if (i == 1)
+            {
+                filters.Duration = Cycle(filters.Duration, new[] { "any", "short", "medium", "long" });
+            }
+            else if (i == 2)
+            {
+                filters.Date = Cycle(filters.Date, new[] { "any", "hour", "today", "week", "month", "year" });
+            }
+            else if (i == 3)
+            {
+                filters.Type = Cycle(filters.Type, new[] { "any", "video", "channel", "playlist" });
+            }
+            else if (i == 4)
+            {
+                filters.Sort = Cycle(filters.Sort, new[] { "relevance", "date", "views" });
+            }
+            else if (i == 5)
+            {
+                filters.Live = !filters.Live;
+            }
+            else if (i == 6)
+            {
+                filters.Hd = !filters.Hd;
+            }
+            else
+            {
+                filters.Subtitles = !filters.Subtitles;
+            }
+            LayoutFilterPills();
+            ReloadResults();
+        }
+
+        private static string Cycle(string current, string[] opts)
+        {
+            for (int i = 0; i < opts.Length; i++)
+            {
+                if (opts[i] == current)
+                {
+                    return opts[(i + 1) % opts.Length];
+                }
+            }
+            return opts[0];
+        }
+
+        private void SetResultMode(bool on)
+        {
+            resultMode = on;
+            if (on)
+            {
+                composePanel.Hide();
+                resultPanel.Show();
+            }
+            else
+            {
+                resultPanel.Hide();
+                composePanel.Show();
+            }
+            if (on)
+            {
+                resultQueryLabel.Text = T("Search: {0}", lastQuery);
+                LayoutFilterPills();
+                zone = Zone.Results;
+                resultGrid.SetFocused(true);
+            }
+            else
+            {
+                resultGrid.SetFocused(false);
+                zone = Zone.Keyboard;
+                RefreshRecent();
+            }
+            UpdateFocus();
+        }
+
+        private void ReloadResults()
+        {
+            string cache = "search:" + lastQuery + ":" + (filters.ToJson() ?? "default");
+            resultGrid.Show(c => YouTube.Search(lastQuery, c, filters.ToJson()), cache, T("No results for this search"));
+        }
 
         private void UpdateFocus()
         {
-            queryLabel.Text = query.Length > 0 ? query + "_" : T("Search YouTube…");
-            queryLabel.TextColor = query.Length > 0 ? Theme.Text : Theme.TextDim;
-            for (int r = 0; r < keyLabels.Count; r++)
+            if (!resultMode)
             {
-                for (int c = 0; c < keyLabels[r].Count; c++)
+                queryLabel.Text = query.Length > 0 ? query + "_" : T("Search YouTube…");
+                queryLabel.TextColor = query.Length > 0 ? Theme.Text : Theme.TextDim;
+                for (int r = 0; r < keyLabels.Count; r++)
                 {
-                    bool f = zone == Zone.Keyboard && r == keyRow && c == keyCol;
-                    keyLabels[r][c].BackgroundColor = f ? Theme.Accent : Theme.Surface;
+                    for (int c = 0; c < keyLabels[r].Count; c++)
+                    {
+                        bool f = zone == Zone.Keyboard && r == keyRow && c == keyCol;
+                        keyLabels[r][c].BackgroundColor = f ? Theme.Accent : Theme.Surface;
+                    }
                 }
+                for (int i = 0; i < recentLabels.Count; i++)
+                {
+                    bool vis = i < LocalStore.RecentSearches.Count;
+                    if (vis)
+                    {
+                        recentLabels[i].BackgroundColor = zone == Zone.Recent && i == recentIndex
+                            ? Theme.SurfaceFocused : Color.Transparent;
+                    }
+                }
+                for (int i = 0; i < suggestionLabels.Count; i++)
+                {
+                    suggestionLabels[i].Text = i < suggestions.Count ? "  " + suggestions[i] : "";
+                    suggestionLabels[i].BackgroundColor = zone == Zone.Suggestions && i == suggestionIndex
+                        ? Theme.SurfaceFocused : Color.Transparent;
+                }
+                addButton.BackgroundColor = zone == Zone.AddButton ? Theme.Accent : Theme.Surface;
             }
-            for (int i = 0; i < suggestionLabels.Count; i++)
+            else
             {
-                suggestionLabels[i].Text = i < suggestions.Count ? "  " + suggestions[i] : "";
-                suggestionLabels[i].BackgroundColor = zone == Zone.Suggestions && i == suggestionIndex
-                    ? Theme.SurfaceFocused : Color.Transparent;
+                editQueryBtn.BackgroundColor = zone == Zone.EditQuery ? Theme.Accent : Theme.Surface;
+                for (int i = 0; i < filterPills.Count; i++)
+                {
+                    filterPills[i].BackgroundColor = zone == Zone.Filters && i == filterIndex ? Theme.Accent : Theme.Surface;
+                }
+                resultGrid.SetFocused(zone == Zone.Results);
             }
-            addButton.BackgroundColor = zone == Zone.AddButton ? Theme.Accent : Theme.Surface;
-            results?.SetFocused(zone == Zone.Results);
         }
 
         public override bool OnKey(string key)
         {
+            if (resultMode)
+            {
+                return ResultKey(key);
+            }
             switch (zone)
             {
                 case Zone.Keyboard:
@@ -173,13 +403,58 @@ namespace OmegaTube.Ui
                         return false;
                     }
                     break;
+                case Zone.Recent:
+                    if (key == "Up")
+                    {
+                        recentIndex = System.Math.Max(0, recentIndex - 1);
+                    }
+                    else if (key == "Down")
+                    {
+                        recentIndex = System.Math.Min(RecentCount - 1, recentIndex + 1);
+                    }
+                    else if (key == "Left")
+                    {
+                        zone = Zone.Keyboard;
+                    }
+                    else if (key == "Right" && SuggestionCount > 0)
+                    {
+                        zone = Zone.Suggestions;
+                        suggestionIndex = 0;
+                    }
+                    else if (key == "Return" && recentIndex < RecentCount)
+                    {
+                        query = LocalStore.RecentSearches[recentIndex];
+                        RunSearch();
+                    }
+                    else if (key == "Delete" && recentIndex < RecentCount)
+                    {
+                        LocalStore.RemoveRecentSearch(LocalStore.RecentSearches[recentIndex]);
+                        recentIndex = System.Math.Min(recentIndex, RecentCount - 1);
+                        RefreshRecent();
+                    }
+                    else if (key == "Clear")
+                    {
+                        LocalStore.ClearRecentSearches();
+                        recentIndex = 0;
+                        RefreshRecent();
+                        zone = Zone.Keyboard;
+                    }
+                    else if (key == "XF86Back" || key == "Escape")
+                    {
+                        zone = Zone.Keyboard;
+                    }
+                    break;
                 case Zone.Suggestions:
                     if (key == "Up")
                     {
-                        suggestionIndex--;
-                        if (suggestionIndex < 0)
+                        if (suggestionIndex == 0 && RecentCount > 0)
                         {
-                            suggestionIndex = 0;
+                            zone = Zone.Recent;
+                            recentIndex = System.Math.Min(RecentCount - 1, suggestionIndex);
+                        }
+                        else
+                        {
+                            suggestionIndex = System.Math.Max(0, suggestionIndex - 1);
                         }
                     }
                     else if (key == "Down")
@@ -188,7 +463,7 @@ namespace OmegaTube.Ui
                     }
                     else if (key == "Left")
                     {
-                        zone = Zone.Keyboard;
+                        zone = RecentCount > 0 ? Zone.Recent : Zone.Keyboard;
                     }
                     else if (key == "Return" && suggestionIndex < suggestions.Count)
                     {
@@ -210,23 +485,86 @@ namespace OmegaTube.Ui
                         AddToHome();
                     }
                     break;
+            }
+            UpdateFocus();
+            return true;
+        }
+
+        private bool ResultKey(string key)
+        {
+            switch (zone)
+            {
                 case Zone.Results:
-                    if (key == "Up" || key == "XF86Back" || key == "Escape")
+                    if (key == "Up")
                     {
-                        zone = Zone.Keyboard;
-                        keyRow = ActionRow;
+                        if (!resultGrid.Move("Up"))
+                        {
+                            zone = Zone.Filters;
+                            filterIndex = 0;
+                        }
                     }
-                    else if (key == "Left")
+                    else if (key == "Left" && !resultGrid.Move("Left"))
                     {
-                        results.Move(-1);
+                        return false;
                     }
                     else if (key == "Right")
                     {
-                        results.Move(1);
+                        resultGrid.Move("Right");
                     }
-                    else if (key == "Return" && results.FocusedItem != null)
+                    else if (key == "Down")
                     {
-                        App.Play(results.FocusedItem);
+                        resultGrid.Move("Down");
+                    }
+                    else if (key == "Return" && resultGrid.FocusedItem != null)
+                    {
+                        App.Play(resultGrid.FocusedItem);
+                    }
+                    else if (key == "XF86Back" || key == "Escape")
+                    {
+                        SetResultMode(false);
+                    }
+                    break;
+                case Zone.Filters:
+                    if (key == "Left")
+                    {
+                        filterIndex = System.Math.Max(0, filterIndex - 1);
+                    }
+                    else if (key == "Right")
+                    {
+                        filterIndex = System.Math.Min(FilterCount - 1, filterIndex + 1);
+                    }
+                    else if (key == "Down" || key == "Return")
+                    {
+                        if (key == "Return")
+                        {
+                            ApplyFilterAction(filterIndex);
+                        }
+                        zone = Zone.Results;
+                    }
+                    else if (key == "Up")
+                    {
+                        zone = Zone.EditQuery;
+                    }
+                    else if (key == "XF86Back" || key == "Escape")
+                    {
+                        SetResultMode(false);
+                    }
+                    break;
+                case Zone.EditQuery:
+                    if (key == "Down" || key == "Return")
+                    {
+                        if (key == "Return")
+                        {
+                            SetResultMode(false);
+                        }
+                        else
+                        {
+                            zone = Zone.Filters;
+                        }
+                    }
+                    else if (key == "XF86Back" || key == "Escape")
+                    {
+                        SetResultMode(false);
                     }
                     break;
             }
@@ -241,14 +579,13 @@ namespace OmegaTube.Ui
                 case "Up":
                     if (keyRow == 0)
                     {
-                        if (results != null)
+                        if (lastQuery.Length > 0)
                         {
                             zone = Zone.AddButton;
                         }
                     }
                     else
                     {
-                        // From the action row, back onto the 10 columns under the wide key.
                         keyCol = keyRow == ActionRow ? System.Math.Min(9, keyCol * 10 / ActionKeys) : keyCol;
                         keyRow--;
                     }
@@ -256,29 +593,39 @@ namespace OmegaTube.Ui
                 case "Down":
                     if (keyRow == ActionRow)
                     {
-                        if (results != null && results.Count > 0)
+                        if (RecentCount > 0)
                         {
-                            zone = Zone.Results;
+                            zone = Zone.Recent;
+                            recentIndex = 0;
+                        }
+                        else if (SuggestionCount > 0)
+                        {
+                            zone = Zone.Suggestions;
+                            suggestionIndex = 0;
                         }
                     }
                     else
                     {
                         keyRow++;
-                        // Map the 10 columns onto the wide keys of the action row.
                         keyCol = keyRow == ActionRow ? System.Math.Min(ActionKeys - 1, keyCol * ActionKeys / 10) : keyCol;
                     }
                     break;
                 case "Left":
                     if (keyCol == 0)
                     {
-                        return false;   // back to the home rail
+                        return false;
                     }
                     keyCol--;
                     break;
                 case "Right":
                     if (keyCol == keyLabels[keyRow].Count - 1)
                     {
-                        if (SuggestionCount > 0)
+                        if (RecentCount > 0)
+                        {
+                            zone = Zone.Recent;
+                            recentIndex = 0;
+                        }
+                        else if (SuggestionCount > 0)
                         {
                             zone = Zone.Suggestions;
                             suggestionIndex = 0;
@@ -334,7 +681,6 @@ namespace OmegaTube.Ui
             UiGuard.Fire("SearchScreen.RefreshSuggestions", RefreshSuggestions);
         }
 
-        // Debounced: only the latest keystroke's request updates the list.
         private async Task RefreshSuggestions()
         {
             int generation = ++suggestGeneration;
@@ -365,37 +711,20 @@ namespace OmegaTube.Ui
             {
                 return;
             }
-            if (results != null)
-            {
-                resultsHost.Remove(results);
-                results.Dispose();
-            }
-            results = new FeedRow(T("Results for “{0}”", q), q, 1920 - KbX);
-            resultsHost.Add(results);
+            lastQuery = q;
+            LocalStore.AddRecentSearch(q);
             addButton.Show();
-            zone = Zone.Keyboard;
-            UiGuard.Fire("SearchScreen.LoadResults", LoadResults);
-        }
-
-        private async Task LoadResults()
-        {
-            FeedRow row = results;
-            await row.Load();
-            if (row == results && row.Count > 0 && zone == Zone.Keyboard)
-            {
-                zone = Zone.Results;
-                UpdateFocus();
-            }
+            ReloadResults();
+            SetResultMode(true);
         }
 
         private void AddToHome()
         {
-            string q = results?.Query;
-            if (string.IsNullOrEmpty(q))
+            if (string.IsNullOrEmpty(lastQuery))
             {
                 return;
             }
-            App.Config.HomeRows.Add(new HomeRow { Title = q, Query = q, Icon = HomeRow.GuessIcon(q) });
+            App.Config.HomeRows.Add(new HomeRow { Title = lastQuery, Query = lastQuery, Icon = HomeRow.GuessIcon(lastQuery) });
             App.Config.Save();
             App.Home.InvalidateRows();
             addButton.Text = "  ✓ " + T("Added to menu") + "  ";

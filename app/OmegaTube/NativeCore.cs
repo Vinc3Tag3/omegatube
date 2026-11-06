@@ -71,12 +71,13 @@ namespace OmegaTube
         public static extern void PlayerDiagnose(IntPtr ecoreWindow, int width, int height, string videoUrl, string audioUrl);
 
         [DllImport(Lib, EntryPoint = "omega_yt_search")]
-        private static extern IntPtr YtSearchRaw(byte[] query, byte[] continuation);
+        private static extern IntPtr YtSearchRaw(byte[] query, byte[] continuation, byte[] filtersJson);
 
         [DllImport(Lib, EntryPoint = "omega_yt_suggest")]
         private static extern IntPtr YtSuggestRaw(byte[] query);
 
-        public static IntPtr YtSearch(string query, string continuation) => YtSearchRaw(Utf8z(query), Utf8z(continuation));
+        public static IntPtr YtSearch(string query, string continuation, string filtersJson = null) =>
+            YtSearchRaw(Utf8z(query), Utf8z(continuation), Utf8z(filtersJson ?? ""));
 
         public static IntPtr YtSuggest(string query) => YtSuggestRaw(Utf8z(query));
 
@@ -182,6 +183,11 @@ namespace OmegaTube
         private static extern IntPtr YtSubscribeRaw(byte[] channelId, int subscribe);
 
         public static IntPtr YtSubscribe(string channelId, bool subscribe) => YtSubscribeRaw(Utf8z(channelId), subscribe ? 1 : 0);
+
+        [DllImport(Lib, EntryPoint = "omega_yt_account_action")]
+        private static extern IntPtr YtAccountActionRaw(byte[] actionJson);
+
+        public static IntPtr YtAccountAction(string actionJson) => YtAccountActionRaw(Utf8z(actionJson ?? ""));
 
         [DllImport(Lib, EntryPoint = "omega_yt_channel")]
         private static extern IntPtr YtChannelRaw(byte[] channelId, byte[] continuation);

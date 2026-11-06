@@ -358,5 +358,7 @@ namespace OmegaTube.Ui
             }
             return false;
         }
+
+        public bool OnReturnPress() => false;
     }
 }

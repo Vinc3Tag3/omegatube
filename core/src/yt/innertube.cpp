@@ -11,6 +11,7 @@
 #include "util/remote_config.h"
 #include "yt/auth.h"
 #include "yt/js_solver.h"
+#include "yt/search_filter.h"
 
 namespace omega::yt {
 namespace {
@@ -120,6 +121,97 @@ std::string avatar_from_renderer(const json& v) {
     return "";
 }
 
+bool contains_any(const std::string& s, std::initializer_list<const char*> words) {
+    for (const char* w : words)
+        if (s.find(w) != std::string::npos) return true;
+    return false;
+}
+
+void collect(const json& j, Feed& out, Feed* highlights = nullptr);
+
+static void classify_feedback_label(const std::string& label, const std::string& token, FeedItem& item) {
+    if (token.empty()) return;
+    if (contains_any(label, {"histor", "history", "Historique"})) {
+        if (item.fb_remove_history.empty()) item.fb_remove_history = token;
+        return;
+    }
+    if (contains_any(label, {"recommend", "recommand", "channel", "chaîne", "chaîne"})) {
+        if (contains_any(label, {"plus", "don't", "ne plus", "more", "Stop"})) {
+            if (item.fb_dont_recommend.empty()) item.fb_dont_recommend = token;
+            return;
+        }
+    }
+    if (contains_any(label, {"intéress", "interested", "recommend this"})) {
+        if (item.fb_not_interested.empty()) item.fb_not_interested = token;
+    }
+}
+
+void attach_feedback_tokens(const json& root, FeedItem& item) {
+    std::function<void(const json&)> walk = [&](const json& j) {
+        if (j.is_object()) {
+            if (j.contains("menuServiceItemRenderer")) {
+                const json& m = j["menuServiceItemRenderer"];
+                std::string label = text_of(m.value("text", json::object()));
+                if (const json* fb = find_key(m, "feedbackEndpoint")) {
+                    classify_feedback_label(label, fb->value("feedbackToken", ""), item);
+                }
+            }
+            for (auto it = j.begin(); it != j.end(); ++it) walk(it.value());
+        } else if (j.is_array()) {
+            for (const json& e : j) walk(e);
+        }
+    };
+    walk(root);
+}
+
+static void collect_history_commands(const json& j, Feed& out) {
+    if (j.is_object()) {
+        for (auto it = j.begin(); it != j.end(); ++it) {
+            if (it.key() == "buttonRenderer" || it.key() == "toggleButtonRenderer") {
+                const json& b = it.value();
+                std::string label = text_of(b.value("text", json::object()));
+                if (label.empty()) label = text_of(b.value("defaultText", json::object()));
+                const json* fb = find_key(b, "feedbackEndpoint");
+                if (!fb) fb = find_key(b, "serviceEndpoint");
+                std::string token;
+                if (fb) token = fb->value("feedbackToken", fb->value("command", json()).dump());
+                if (token.empty() && fb && fb->contains("feedbackEndpoint"))
+                    token = (*fb)["feedbackEndpoint"].value("feedbackToken", "");
+                if (token.empty()) continue;
+                if (contains_any(label, {"pause", "Pause", "mettre en pause"}))
+                    out.history_pause_token = token;
+                else if (contains_any(label, {"clear", "effacer", "Clear", "Delete", "supprimer"}))
+                    out.history_clear_token = token;
+            } else if (it.key() == "itemSectionRenderer" && it.value().is_object()) {
+                HistoryGroup group;
+                if (const json* header = find_key(it.value(), "title"))
+                    group.title = text_of(*header);
+                Feed chunk;
+                collect(it.value(), chunk);
+                group.items = std::move(chunk.items);
+                if (!group.items.empty()) out.groups.push_back(std::move(group));
+            } else {
+                collect_history_commands(it.value(), out);
+            }
+        }
+    } else if (j.is_array()) {
+        for (const json& e : j) collect_history_commands(e, out);
+    }
+}
+
+void parse_channel_renderer(const json& v, Feed& out) {
+    FeedItem item;
+    item.kind = "channel";
+    item.video_id = v.value("channelId", "");
+    if (item.video_id.empty()) return;
+    item.title = text_of(v.value("title", json::object()));
+    if (item.title.empty()) return;
+    item.channel_avatar = last_thumbnail(v.value("thumbnail", json::object()));
+    item.views = text_of(v.value("subscriberCountText", v.value("videoCountText", json::object())));
+    item.thumbnail = item.channel_avatar;
+    out.items.push_back(std::move(item));
+}
+
 void parse_video_renderer(const json& v, Feed& out) {
     FeedItem item;
     item.video_id = v.value("videoId", "");
@@ -140,6 +232,7 @@ void parse_video_renderer(const json& v, Feed& out) {
     item.channel_avatar = avatar_from_renderer(v);
     item.watched_percent = watched_percent(v.value("thumbnailOverlays", json::array()));
     out.items.push_back(std::move(item));
+    attach_feedback_tokens(v, out.items.back());
 }
 
 // A row of a playlist page (WEB browse VL<id>): no channel avatar, "views • age" in videoInfo.
@@ -196,6 +289,7 @@ void parse_tile(const json& t, Feed& out) {
     }
     item.watched_percent = watched_percent(header.value("thumbnailOverlays", json::array()));
     out.items.push_back(std::move(item));
+    attach_feedback_tokens(t, out.items.back());
 }
 
 // 2025+ layout: lockupViewModel (contentId, lockupMetadataViewModel; duration in a thumbnail badge).
@@ -250,11 +344,12 @@ void parse_lockup(const json& l, Feed& out) {
     if (const json* av = find_key(meta, "avatar")) item.channel_avatar = last_thumbnail(av->value("thumbnail", json::object()));
     item.watched_percent = watched_percent(l.value("contentImage", json::object()));
     out.items.push_back(std::move(item));
+    attach_feedback_tokens(l, out.items.back());
 }
 
 // Walks the whole response: YouTube moves renderers around between layouts, so search by key.
 // highlights: where titled TV shelves go (subscriptions), instead of the main list.
-void collect(const json& j, Feed& out, Feed* highlights = nullptr) {
+void collect(const json& j, Feed& out, Feed* highlights) {
     if (j.is_object()) {
         for (auto it = j.begin(); it != j.end(); ++it) {
             if (it.key() == "shelfRenderer" && it.value().is_object()) {
@@ -264,6 +359,8 @@ void collect(const json& j, Feed& out, Feed* highlights = nullptr) {
                 else collect(shelf, out, highlights);
             } else if (it.key() == "videoRenderer" || it.key() == "compactVideoRenderer") {
                 parse_video_renderer(it.value(), out);
+            } else if (it.key() == "channelRenderer") {
+                parse_channel_renderer(it.value(), out);
             } else if (it.key() == "lockupViewModel") {
                 parse_lockup(it.value(), out);
             } else if (it.key() == "playlistVideoRenderer") {
@@ -426,12 +523,6 @@ void texts_under(const json& j, const char* key, std::vector<std::string>& out) 
     } else if (j.is_array()) {
         for (const json& e : j) texts_under(e, key, out);
     }
-}
-
-bool contains_any(const std::string& s, std::initializer_list<const char*> words) {
-    for (const char* w : words)
-        if (s.find(w) != std::string::npos) return true;
-    return false;
 }
 
 }  // namespace
@@ -638,12 +729,14 @@ bool Client::player_with(const json& c, const std::string& video_id, VideoInfo& 
     return true;
 }
 
-bool Client::search(const std::string& query, const std::string& continuation, Feed& out, std::string& error) {
+bool Client::search(const std::string& query, const std::string& continuation, const std::string& filter_params,
+                    Feed& out, std::string& error) {
     if (!ensure_visitor(error)) return false;
     ClientDef def = client_def("search", visitor_data_, web_client_version_);
     json body = {{"context", {{"client", def.client}}}};
     if (continuation.empty()) {
         body["query"] = query;
+        if (!filter_params.empty()) body["params"] = filter_params;
     } else {
         body["continuation"] = continuation;
     }
@@ -944,6 +1037,14 @@ bool Client::browse(const std::string& browse_id, const std::string& continuatio
         // Home: rows by topic (next pages bring more rows).
         collect_shelves(r, out);
         collect_chips(r, out.chips);
+    } else if (browse_id == "FEhistory" && continuation.empty()) {
+        collect(r, out);
+        collect_history_commands(r, out);
+        if (!out.groups.empty()) {
+            out.items.clear();
+            for (const HistoryGroup& g : out.groups)
+                out.items.insert(out.items.end(), g.items.begin(), g.items.end());
+        }
     } else {
         // Subscriptions "Tous" tab: a titled "most relevant" shelf, then untitled shelves in date order.
         Feed picked;
@@ -1136,6 +1237,81 @@ bool fetch_captions(const std::string& url, const std::string& translate_to, std
     }
     OLOG("yt: captions %s -> %zu cues", translate_to.empty() ? "" : ("-> " + translate_to).c_str(), out.size());
     return true;
+}
+
+bool account_action(const json& req, const std::string& access_token, json& out, std::string& error) {
+    std::string action = req.value("action", "");
+    if (action == "addToPlaylist") {
+        std::string pl = req.value("playlistId", "WL");
+        std::string vid = req.value("videoId", "");
+        if (vid.empty()) {
+            error = "missing videoId";
+            return false;
+        }
+        net::Response res = post_as_account(
+            "browse/edit_playlist",
+            {{"playlistId", pl}, {"actions", json::array({{{"action", "ACTION_ADD_VIDEO"}, {"addedVideoId", vid}}})}},
+            access_token);
+        if (!res.ok()) {
+            error = http_error("edit_playlist", res);
+            return false;
+        }
+        return true;
+    }
+    if (action == "createPlaylist") {
+        std::string name = req.value("name", "");
+        if (name.empty()) {
+            error = "missing name";
+            return false;
+        }
+        json body = {{"title", name}, {"privacyStatus", "PRIVATE"}};
+        if (req.contains("videoId") && req["videoId"].is_string() && !req["videoId"].get<std::string>().empty())
+            body["videoIds"] = json::array({req["videoId"]});
+        net::Response res = post_as_account("playlist/create", body, access_token);
+        if (!res.ok()) {
+            error = http_error("playlist/create", res);
+            return false;
+        }
+        json r = json::parse(res.body, nullptr, false);
+        std::function<void(const json&)> walk = [&](const json& j) {
+            if (j.is_object()) {
+                if (j.contains("playlistId") && j["playlistId"].is_string()) out["playlistId"] = j["playlistId"];
+                for (auto it = j.begin(); it != j.end(); ++it) walk(it.value());
+            } else if (j.is_array()) {
+                for (const json& e : j) walk(e);
+            }
+        };
+        if (r.is_object()) walk(r);
+        return true;
+    }
+    if (action == "feedback") {
+        std::string tok = req.value("token", "");
+        if (tok.empty()) {
+            error = "missing token";
+            return false;
+        }
+        net::Response res = post_as_account("feedback", {{"feedbackTokens", json::array({tok})}}, access_token);
+        if (!res.ok()) {
+            error = http_error("feedback", res);
+            return false;
+        }
+        return true;
+    }
+    if (action == "notification") {
+        std::string tok = req.value("token", "");
+        if (tok.empty()) {
+            error = "missing token";
+            return false;
+        }
+        net::Response res = post_as_account("feedback", {{"feedbackTokens", json::array({tok})}}, access_token);
+        if (!res.ok()) {
+            error = http_error("notification", res);
+            return false;
+        }
+        return true;
+    }
+    error = "unknown action";
+    return false;
 }
 
 bool rate_video(const std::string& video_id, const std::string& rating, const std::string& access_token,

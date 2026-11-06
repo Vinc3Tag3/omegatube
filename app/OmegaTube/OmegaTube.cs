@@ -263,6 +263,11 @@ namespace OmegaTube
 
         public void Play(VideoItem item)
         {
+            if (item.Kind == "channel")
+            {
+                Push(new ChannelScreen(this, item.Id, item.Title, item.ChannelAvatar, -1));
+                return;
+            }
             if (item.Kind == "playlist")
             {
                 Push(new PlaylistScreen(this, item));

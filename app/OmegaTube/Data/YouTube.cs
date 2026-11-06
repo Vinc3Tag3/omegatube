@@ -17,8 +17,11 @@ namespace OmegaTube.Data
         public int WatchedPercent;   // account progress reported by YouTube (0 when unknown)
         // Playlist / mix card: plays Id within PlaylistId. Videos of a playlist keep Kind "video" + PlaylistId.
         public string PlaylistId = "";
-        public string Kind = "video";   // video | playlist | mix
+        public string Kind = "video";   // video | playlist | mix | channel
         public bool IsList => Kind == "playlist" || Kind == "mix";
+        public string FeedbackNotInterested = "";
+        public string FeedbackDontRecommend = "";
+        public string FeedbackRemoveHistory = "";
     }
 
     public class SkipSegment
@@ -100,6 +103,8 @@ namespace OmegaTube.Data
         public string Avatar = "", Subscribers = "";   // channels
         public List<Shelf> Shelves = new List<Shelf>();   // home: rows by topic (Items then empty)
         public List<HomeChip> Chips = new List<HomeChip>();
+        public List<HistoryGroup> Groups = new List<HistoryGroup>();
+        public HistoryCommands Commands = new HistoryCommands();
         public string Error;
     }
 
@@ -116,13 +121,23 @@ namespace OmegaTube.Data
         public string Id = "", Label = "", BrowseId = "";
     }
 
-    // Async wrappers over the native core's YouTube data calls (network runs on the thread pool,
-    // continuations come back on the UI thread through the Tizen synchronization context).
+    public class HistoryGroup
+    {
+        public string Title = "";
+        public List<VideoItem> Items = new List<VideoItem>();
+    }
+
+    public class HistoryCommands
+    {
+        public string Pause = "", Clear = "";
+    }
+
+    // Async wrappers over the native core's YouTube data calls
     public static class YouTube
     {
-        public static Task<FeedPage> Search(string query, string continuation = "")
+        public static Task<FeedPage> Search(string query, string continuation = "", string filtersJson = null)
         {
-            return Task.Run(() => ToPage(Call(NativeCore.YtSearch(query, continuation ?? ""))));
+            return Task.Run(() => ToPage(Call(NativeCore.YtSearch(query, continuation ?? "", filtersJson))));
         }
 
         // The videos after videoId in a playlist / mix (page.Title: the list's name).
@@ -164,6 +179,17 @@ namespace OmegaTube.Data
 
         public static Task<string> Subscribe(string channelId, bool subscribe) =>
             Task.Run(() => Json.Str(Call(NativeCore.YtSubscribe(channelId, subscribe)), "error", null));
+
+        public static Task<string> AccountAction(string actionJson) =>
+            Task.Run(() => Json.Str(Call(NativeCore.YtAccountAction(actionJson)), "error", null));
+
+        public static Task<string> AddToWatchLater(string videoId) =>
+            AccountAction(Json.Write(new Dictionary<string, object>
+            {
+                ["action"] = "addToPlaylist",
+                ["playlistId"] = "WL",
+                ["videoId"] = videoId,
+            }));
 
         public static Task<FeedPage> Related(string videoId)
         {
@@ -223,6 +249,25 @@ namespace OmegaTube.Data
                         BrowseId = Json.Str(c, "browseId"),
                     });
                 }
+                foreach (object g in Json.Arr(root, "groups") ?? new List<object>())
+                {
+                    page.Groups.Add(new HistoryGroup { Title = Json.Str(g, "title"), Items = ToItems(g, "items") });
+                }
+                object cmd = Json.Obj(root, "commands");
+                if (cmd != null)
+                {
+                    page.Commands = new HistoryCommands
+                    {
+                        Pause = Json.Str(cmd, "pause"),
+                        Clear = Json.Str(cmd, "clear"),
+                    };
+                }
+                page.Items = SessionHide.Filter(page.Items);
+                page.Highlights = SessionHide.Filter(page.Highlights);
+                foreach (Shelf shelf in page.Shelves)
+                {
+                    shelf.Items = SessionHide.Filter(shelf.Items);
+                }
                 return page;
             }
         }
@@ -239,7 +284,7 @@ namespace OmegaTube.Data
                     Title = Json.Str(o, "title"),
                     Channel = Json.Str(o, "channel"),
                     Duration = Json.Str(o, "duration"),
-                    Views = Json.Str(o, "views"),
+                    Views = string.IsNullOrEmpty(Json.Str(o, "views")) ? Json.Str(o, "subscribers") : Json.Str(o, "views"),
                     Published = Json.Str(o, "published"),
                     Thumbnail = Json.Str(o, "thumbnail"),
                     Live = Json.Bool(o, "live"),
@@ -250,6 +295,9 @@ namespace OmegaTube.Data
                     WatchedPercent = (int)Json.Num(o, "watched"),
                     PlaylistId = Json.Str(o, "playlistId"),
                     Kind = Json.Str(o, "kind", "video"),
+                    FeedbackNotInterested = Json.Str(Json.Obj(o, "feedback"), "notInterested"),
+                    FeedbackDontRecommend = Json.Str(Json.Obj(o, "feedback"), "dontRecommend"),
+                    FeedbackRemoveHistory = Json.Str(Json.Obj(o, "feedback"), "removeHistory"),
                 });
             }
             return items;

@@ -1,5 +1,7 @@
 #include "yt/selfcheck.h"
 
+#include "yt/search_filter.h"
+
 #include <cctype>
 #include <cstdlib>
 
@@ -57,12 +59,6 @@ bool parse_description_timestamp_ms(const std::string& text, int64_t* out_ms) {
         return true;
     }
     return false;
-}
-
-bool search_filter_encode_selfcheck(std::string& error) {
-    // shortcut: full protobuf params wired with search filters task; placeholder passes structure checks
-    (void)error;
-    return true;
 }
 
 bool run_selfcheck(std::string& error) {
