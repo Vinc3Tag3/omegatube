@@ -1,0 +1,105 @@
+# csproj file path
+csproj_file: OmegaTube.csproj
+
+# Default profile, Tizen API version
+profile: tizen
+api_version: "10.0"
+
+# Build type [Debug/ Release/ Test]
+build_type: Debug
+
+# Output path for build
+output_path: ""
+
+# Signing profile to be used for Tizen package signing
+# If value is empty: "", active signing profile will be used
+# Else If value is ".", default signing profile will be used
+signing_profile: ""
+
+# files monitored for dirty/modified status
+files:
+  - BugReport.cs
+  - Config/AppConfig.cs
+  - Data/LocalStore.cs
+  - Data/SearchFilters.cs
+  - Data/SessionHide.cs
+  - Data/SessionQueue.cs
+  - Data/YouTube.cs
+  - I18n.cs
+  - NativeCore.cs
+  - OmegaTube.cs
+  - OmegaTube.csproj
+  - Ui/AccountScreen.cs
+  - Ui/Card.cs
+  - Ui/ChannelScreen.cs
+  - Ui/ConfirmDialog.cs
+  - Ui/FeedGrid.cs
+  - Ui/FeedRow.cs
+  - Ui/HomeScreen.cs
+  - Ui/IFeedView.cs
+  - Ui/ListPanel.cs
+  - Ui/PlayerScreen.cs
+  - Ui/PlaylistScreen.cs
+  - Ui/Rail.cs
+  - Ui/ReportScreen.cs
+  - Ui/SafeErrorScreen.cs
+  - Ui/Screen.cs
+  - Ui/SearchScreen.cs
+  - Ui/SettingsScreen.cs
+  - Ui/ShelfList.cs
+  - Ui/Splash.cs
+  - Ui/Theme.cs
+  - Ui/UiGuard.cs
+  - Ui/UiWork.cs
+  - Ui/Widgets.cs
+  - Ui/YouScreen.cs
+  - Util/Json.cs
+  - Util/Qr.cs
+  - res/icons/LICENSE-SmartTube.txt
+  - res/icons/audio_track.png
+  - res/icons/check.png
+  - res/icons/fast_forward.png
+  - res/icons/fast_rewind.png
+  - res/icons/gaming.png
+  - res/icons/history.png
+  - res/icons/home.png
+  - res/icons/info.png
+  - res/icons/info_outline.png
+  - res/icons/kids.png
+  - res/icons/language.png
+  - res/icons/live.png
+  - res/icons/logout.png
+  - res/icons/music.png
+  - res/icons/news.png
+  - res/icons/omegatube.png
+  - res/icons/pause.png
+  - res/icons/person.png
+  - res/icons/play.png
+  - res/icons/quality.png
+  - res/icons/repeat.png
+  - res/icons/restart.png
+  - res/icons/search.png
+  - res/icons/set_account.png
+  - res/icons/settings.png
+  - res/icons/shield.png
+  - res/icons/skip_next.png
+  - res/icons/skip_segment.png
+  - res/icons/speed.png
+  - res/icons/sports.png
+  - res/icons/stats.png
+  - res/icons/subscriptions.png
+  - res/icons/subtitles.png
+  - res/icons/thumb_down.png
+  - res/icons/thumb_up.png
+  - res/icons/trending.png
+  - res/icons/view_list.png
+  - res/images/scrim_bottom.png
+  - res/images/scrim_top.png
+  - res/images/splash_omega.png
+  - res/images/splash_play.png
+  - shared/res/omegatube.png
+  - shared/res/splash.png
+  - tizen-manifest.xml
+
+# project dependencies
+deps: []

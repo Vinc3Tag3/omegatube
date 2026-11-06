@@ -8,3 +8,8 @@ app/OmegaTube/res/dev.json
 *.pri
 auth.json
 omegatube-auth.json
+
+# Tizen IDE / RDS local state (machine paths)
+app/OmegaTube/.tizen-rds/
+# Tizen Studio backup manifest
+app/OmegaTube/tizen-manifest.xml-E
