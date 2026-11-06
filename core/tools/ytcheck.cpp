@@ -2,7 +2,7 @@
 //   ytcheck --get <url>          HTTPS sanity check (prints status + size)
 //   ytcheck --sb <videoId>        SponsorBlock segments
 //   ytcheck --signin              Google device-flow sign-in, then signed-in home + subscriptions
-//   ytcheck --search <query>     search results + suggestions
+//   ytcheck --playlist-page WL|LL   library lists (use after --signin for account playlists)
 //   ytcheck --captions <videoId> [lang] [tlang]  caption tracks, then the first cues of the `lang` track
 //                                (default: the first one), machine-translated to tlang if given
 //   ytcheck --account            name / handle / photo of the account of a previous --signin

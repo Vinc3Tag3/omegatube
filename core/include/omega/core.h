@@ -122,6 +122,9 @@ OMEGA_API char* omega_yt_details(const char* video_id);
 // As the signed-in account: rating "like" | "dislike" | "none"; (un)subscribe. {"ok":true} or {"error"}.
 OMEGA_API char* omega_yt_rate(const char* video_id, const char* rating);
 OMEGA_API char* omega_yt_subscribe(const char* channel_id, int subscribe);
+// Signed-in library / feedback / notifications. JSON request (see contracts/shell-json.md):
+// {"ok":true} or {"ok":true,"playlistId":"..."} or {"error":"..."}.
+OMEGA_API char* omega_yt_account_action(const char* action_json);
 // A channel's videos (newest first): same JSON as search plus "title","avatar","subscribers" (first page).
 OMEGA_API char* omega_yt_channel(const char* channel_id, const char* continuation);
 // Subtitles: a caption track URL (from omega_player_formats), machine-translated to translate_to when not

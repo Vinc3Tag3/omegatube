@@ -127,14 +127,22 @@ namespace OmegaTube.Data
         // Fraction watched (0..1), or 0 when unknown.
         public static double Progress(string videoId)
         {
-            object e = positions != null && positions.TryGetValue(videoId, out object v) ? v : null;
+            if (string.IsNullOrEmpty(videoId) || positions == null)
+            {
+                return 0;
+            }
+            object e = positions.TryGetValue(videoId, out object v) ? v : null;
             double dur = Json.Num(e, "dur");
             return dur > 0 ? Math.Min(1, Json.Num(e, "pos") / dur) : 0;
         }
 
         public static long ResumePosition(string videoId)
         {
-            object e = positions != null && positions.TryGetValue(videoId, out object v) ? v : null;
+            if (string.IsNullOrEmpty(videoId) || positions == null)
+            {
+                return 0;
+            }
+            object e = positions.TryGetValue(videoId, out object v) ? v : null;
             return (long)Json.Num(e, "pos");
         }
 
