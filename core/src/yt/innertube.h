@@ -34,12 +34,14 @@ struct Format {
 // One entry of a feed (search results, channel videos...).
 struct FeedItem {
     std::string video_id, title, channel, duration, views, published, thumbnail;
-    // Playlists and mixes: playlist_id + the first video to play (video_id). Videos inside a playlist
-    // (Client::playlist) keep kind "video" with the playlist_id they belong to.
     std::string playlist_id;
     std::string kind = "video";  // "video" | "playlist" | "mix"
+    std::string channel_avatar;
+    std::string badge;  // "" | "live" | "new" | "premiere"
+    bool verified = false;
+    int item_count = 0;
     bool is_live = false;
-    int watched_percent = 0;  // account's progress as YouTube reports it (signed-in feeds)
+    int watched_percent = 0;
 };
 
 // A titled row of the TV home ("Recommandations", "Jeux vidéo"...); continuation = more items of that row.
@@ -49,12 +51,17 @@ struct Shelf {
     std::string continuation;
 };
 
+struct HomeChip {
+    std::string id, label, browse_id;
+};
+
 struct Feed {
     std::vector<FeedItem> items;
     // FEsubscriptions: YouTube's picked shelf ("Les plus pertinentes") kept apart from the chronological feed.
     std::vector<FeedItem> highlights;
     // FEwhat_to_watch: the home's rows (items stays empty); continuation then gives more rows.
     std::vector<Shelf> shelves;
+    std::vector<HomeChip> chips;
     std::string continuation;  // empty when there is no next page
 };
 
@@ -131,6 +138,8 @@ public:
     // Signed-in feeds through the TV client: FEwhat_to_watch (home), FEsubscriptions, FEhistory.
     bool browse(const std::string& browse_id, const std::string& continuation, const std::string& access_token,
                 Feed& out, std::string& error);
+    // Public browse ids (WEB client, no account token): FEtrending, FEmusic, chip targets from remote-config.
+    bool browse_web(const std::string& browse_id, const std::string& continuation, Feed& out, std::string& error);
 
     // Why the last player() call was refused: playabilityStatus.status ("LOGIN_REQUIRED", "UNPLAYABLE",
     // "LIVE_STREAM_OFFLINE", ...) with YouTube's reason (in the request language), "HTTP_<code>" for a

@@ -9,6 +9,10 @@ namespace OmegaTube.Data
     public class VideoItem
     {
         public string Id, Title, Channel, Duration, Views, Published, Thumbnail;
+        public string ChannelAvatar = "";
+        public string Badge = "";
+        public bool Verified;
+        public int ItemCount;
         public bool Live;
         public int WatchedPercent;   // account progress reported by YouTube (0 when unknown)
         // Playlist / mix card: plays Id within PlaylistId. Videos of a playlist keep Kind "video" + PlaylistId.
@@ -95,6 +99,7 @@ namespace OmegaTube.Data
         public string Title = "";   // playlists, channels
         public string Avatar = "", Subscribers = "";   // channels
         public List<Shelf> Shelves = new List<Shelf>();   // home: rows by topic (Items then empty)
+        public List<HomeChip> Chips = new List<HomeChip>();
         public string Error;
     }
 
@@ -104,6 +109,11 @@ namespace OmegaTube.Data
         public string Title = "";
         public List<VideoItem> Items = new List<VideoItem>();
         public string Continuation = "";
+    }
+
+    public class HomeChip
+    {
+        public string Id = "", Label = "", BrowseId = "";
     }
 
     // Async wrappers over the native core's YouTube data calls (network runs on the thread pool,
@@ -166,6 +176,29 @@ namespace OmegaTube.Data
             return Task.Run(() => ToPage(Call(NativeCore.YtBrowse(browseId, continuation ?? ""))));
         }
 
+        public static Task<FeedPage> HomeAnon(string browseId, string continuation = "")
+        {
+            return Task.Run(() => ToPage(Call(NativeCore.YtHomeAnon(browseId ?? "", continuation ?? ""))));
+        }
+
+        // API chips when present; else remote-config homeChips defaults (labels still go through I18n in UI).
+        public static List<HomeChip> HomeChips(FeedPage page)
+        {
+            if (page != null && page.Chips.Count > 0)
+            {
+                return page.Chips;
+            }
+            return new List<HomeChip>
+            {
+                new HomeChip { Id = "all", Label = "All", BrowseId = "" },
+                new HomeChip { Id = "music", Label = "Music", BrowseId = "FEmusic" },
+                new HomeChip { Id = "live", Label = "Live", BrowseId = "FElive" },
+                new HomeChip { Id = "gaming", Label = "Gaming", BrowseId = "FEgaming" },
+                new HomeChip { Id = "news", Label = "News", BrowseId = "FEnews" },
+                new HomeChip { Id = "sports", Label = "Sports", BrowseId = "FEsports" },
+            };
+        }
+
         private static FeedPage ToPage(object root)
         {
             {
@@ -180,6 +213,15 @@ namespace OmegaTube.Data
                 foreach (object s in Json.Arr(root, "shelves") ?? new List<object>())
                 {
                     page.Shelves.Add(new Shelf { Title = Json.Str(s, "title"), Items = ToItems(s, "items"), Continuation = Json.Str(s, "continuation") });
+                }
+                foreach (object c in Json.Arr(root, "chips") ?? new List<object>())
+                {
+                    page.Chips.Add(new HomeChip
+                    {
+                        Id = Json.Str(c, "id"),
+                        Label = Json.Str(c, "label"),
+                        BrowseId = Json.Str(c, "browseId"),
+                    });
                 }
                 return page;
             }
@@ -201,6 +243,10 @@ namespace OmegaTube.Data
                     Published = Json.Str(o, "published"),
                     Thumbnail = Json.Str(o, "thumbnail"),
                     Live = Json.Bool(o, "live"),
+                    ChannelAvatar = Json.Str(o, "channelAvatar"),
+                    Badge = Json.Str(o, "badge"),
+                    Verified = Json.Bool(o, "verified"),
+                    ItemCount = (int)Json.Num(o, "itemCount"),
                     WatchedPercent = (int)Json.Num(o, "watched"),
                     PlaylistId = Json.Str(o, "playlistId"),
                     Kind = Json.Str(o, "kind", "video"),

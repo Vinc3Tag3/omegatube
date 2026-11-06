@@ -45,6 +45,10 @@ namespace OmegaTube.Ui
         private int generation;   // ignores pages of a previous Show()
         private Animation scroll, hlScroll;
         private readonly Func<bool> pump;
+        private bool loadFailed;
+        private readonly List<Card> skeletonCards = new List<Card>();
+
+        public bool LoadFailed => loadFailed;
 
         public FeedGrid(int width, int height)
         {
@@ -78,6 +82,7 @@ namespace OmegaTube.Ui
             hlHeading.Text = T("Most relevant");   // the app language may have changed since the last feed
             gridHeading.Text = T("All videos");
             ClearCards();
+            loadFailed = false;
             focus = 0;
             continuation = "";
             fresh = false;
@@ -91,6 +96,7 @@ namespace OmegaTube.Ui
                 return;
             }
             status.Text = T("Loading…");
+            ShowSkeleton();
             AfterChange();
             if (cacheKey != null)
             {
@@ -109,8 +115,19 @@ namespace OmegaTube.Ui
             }
             SetHighlights(cached.Highlights);
             items.AddRange(cached.Items);
+            ClearSkeleton();
             status.Text = "";
             AfterChange();
+        }
+
+        public void RetryLoad()
+        {
+            if (loader == null)
+            {
+                return;
+            }
+            loadFailed = false;
+            Refresh();
         }
 
         public void Wake()
@@ -145,6 +162,7 @@ namespace OmegaTube.Ui
 
         private void ClearCards()
         {
+            ClearSkeleton();
             items.Clear();
             foreach (Card c in cards)
             {
@@ -154,6 +172,28 @@ namespace OmegaTube.Ui
             cards.Clear();
             SetHighlights(new List<VideoItem>());
             inHighlights = false;
+        }
+
+        private void ShowSkeleton()
+        {
+            ClearSkeleton();
+            for (int i = 0; i < 8; i++)
+            {
+                var ph = Card.Placeholder(cardW);
+                ph.Position = CardPosition(i);
+                content.Add(ph);
+                skeletonCards.Add(ph);
+            }
+        }
+
+        private void ClearSkeleton()
+        {
+            foreach (Card c in skeletonCards)
+            {
+                content.Remove(c);
+                c.Dispose();
+            }
+            skeletonCards.Clear();
         }
 
         // Cards of videos already shown are kept (network page after the cached one).
@@ -276,12 +316,16 @@ namespace OmegaTube.Ui
             loading = false;
             if (page.Error != null)
             {
+                loadFailed = true;
                 if (Count == 0)
                 {
-                    status.Text = T("Error: {0}", page.Error);
+                    ClearSkeleton();
+                    status.Text = T("Error: {0}. {1}", page.Error, T("Press OK to retry"));
                 }
                 return;
             }
+            ClearSkeleton();
+            loadFailed = false;
             if (!fresh)
             {
                 // First network page replaces the cached one.

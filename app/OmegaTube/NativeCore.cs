@@ -93,6 +93,12 @@ namespace OmegaTube
 
         public static IntPtr YtBrowse(string browseId, string continuation) => YtBrowseRaw(Utf8z(browseId), Utf8z(continuation));
 
+        [DllImport(Lib, EntryPoint = "omega_yt_home_anon")]
+        private static extern IntPtr YtHomeAnonRaw(byte[] browseId, byte[] continuation);
+
+        public static IntPtr YtHomeAnon(string browseId, string continuation) =>
+            YtHomeAnonRaw(Utf8z(browseId), Utf8z(continuation));
+
         [DllImport(Lib, EntryPoint = "omega_init")]
         private static extern void InitRaw(byte[] dataDir);
 
