@@ -315,8 +315,16 @@ namespace OmegaTube.Ui
         private void SetResultMode(bool on)
         {
             resultMode = on;
-            composePanel.Visibility = on ? VisibilityType.Hidden : VisibilityType.Visible;
-            resultPanel.Visibility = on ? VisibilityType.Visible : VisibilityType.Hidden;
+            if (on)
+            {
+                composePanel.Hide();
+                resultPanel.Show();
+            }
+            else
+            {
+                resultPanel.Hide();
+                composePanel.Show();
+            }
             if (on)
             {
                 resultQueryLabel.Text = T("Search: {0}", lastQuery);

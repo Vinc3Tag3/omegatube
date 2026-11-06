@@ -146,13 +146,13 @@ namespace OmegaTube.Ui
             }
             if (e.Shelves)
             {
-                var shelves = new ShelfList(feedHost.SizeWidth, feedHost.SizeHeight);
+                var shelves = new ShelfList((int)feedHost.SizeWidth, (int)feedHost.SizeHeight);
                 shelves.Show(e.Loader, "you:" + e.Key);
                 feed = shelves;
             }
             else
             {
-                var grid = new FeedGrid(feedHost.SizeWidth, feedHost.SizeHeight);
+                var grid = new FeedGrid((int)feedHost.SizeWidth, (int)feedHost.SizeHeight);
                 grid.Show(e.Loader, "you:" + e.Key, e.EmptyText);
                 feed = grid;
             }

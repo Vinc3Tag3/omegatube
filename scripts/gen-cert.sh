@@ -15,7 +15,9 @@ DUID="${1:?usage: gen-cert.sh [--distributor] <DUID>[,<DUID>...] [author name]}"
 NAME="${2:-OmegaTube}"
 STUDIO="${TIZEN_STUDIO:-$HOME/tizen-studio}"
 OUT="$HOME/SamsungCertificate/omegatube"
-PLUGIN=$(ls "$STUDIO"/tools/certificate-manager/plugins/org.tizen.common.cert_*.jar | head -n1)
+PLUGIN=$(ls "$STUDIO"/tools/certificate-manager/plugins/org.tizen.common.cert_*.jar 2>/dev/null \
+  || ls "$STUDIO"/tools/certificate-manager/Certificate-manager.app/Contents/Eclipse/plugins/org.tizen.common.cert_*.jar 2>/dev/null \
+  || ls "$STUDIO"/TizenStudio.app/Contents/Eclipse/plugins/org.tizen.common.cert_*.jar 2>/dev/null | head -n1)
 
 rm -rf build/certjar && mkdir -p build/certjar && unzip -oq "$PLUGIN" -d build/certjar
 CP="build/certjar:$(ls build/certjar/lib/*.jar | tr '\n' ':')$STUDIO/tools/ide/lib-ncli/slf4j-api-1.7.36.jar"

@@ -349,7 +349,7 @@ void parse_lockup(const json& l, Feed& out) {
 
 // Walks the whole response: YouTube moves renderers around between layouts, so search by key.
 // highlights: where titled TV shelves go (subscriptions), instead of the main list.
-void collect(const json& j, Feed& out, Feed* highlights = nullptr) {
+void collect(const json& j, Feed& out, Feed* highlights) {
     if (j.is_object()) {
         for (auto it = j.begin(); it != j.end(); ++it) {
             if (it.key() == "shelfRenderer" && it.value().is_object()) {
